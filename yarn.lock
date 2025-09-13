@@ -1845,7 +1845,7 @@ source-map@^0.5.7:
   resolved "https://registry.npmjs.org/source-map/-/source-map-0.5.7.tgz"
   integrity sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ==
 
-"static-web@file:/Users/victor/Documents/ticketfairy/static-web/client":
+"static-web@file:/Users/sophieyang/Documents/static-web/client":
   version "0.0.0"
   resolved "file:client"
   dependencies:
