@@ -24,7 +24,6 @@ import {
   Alert,
   AlertIcon,
   Code,
-  Spinner,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy } from "react-icons/fi";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
@@ -936,44 +935,120 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         </Box>
       </VStack>
 
-      {/* Video Upload Modal - Simplified */}
-      <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
+      {/* Video Upload Modal - Enhanced */}
+      <Modal isOpen={isOpen} onClose={onClose} size="lg">
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
+        <ModalContent mx={4} bg="white" borderRadius="xl" shadow="2xl">
+          <ModalHeader pb={2}>
+            <VStack spacing={2} align="center">
+              <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+                ✨ Create Your Video ✨
+              </Text>
+              <Text fontSize="md" color="gray.600" textAlign="center" fontWeight="normal">
+                Choose how you'd like to create your video for ticket generation
+              </Text>
+            </VStack>
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody p={8}>
-            <SimpleGrid columns={2} spacing={6} w="full">
-              <Button
-                h="120px"
-                w="120px"
-                colorScheme="purple"
-                variant="outline"
-                fontSize="xl"
-                fontWeight="bold"
-                onClick={handleUploadClick}
-                display="flex"
-                flexDirection="column"
-                gap={3}>
-                <Icon as={FiUpload} w={8} h={8} />
-                Upload
-              </Button>
+          <ModalBody px={8} pb={8}>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} w="full">
+              {/* Upload Option */}
+              <Box
+                p={6}
+                borderWidth="2px"
+                borderColor="purple.200"
+                borderRadius="xl"
+                bg="purple.50"
+                _hover={{
+                  borderColor: "purple.300",
+                  bg: "purple.100",
+                  transform: "translateY(-2px)",
+                  shadow: "lg",
+                }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={handleUploadClick}>
+                <VStack spacing={4} align="center" h="full">
+                  <Box p={4} bg="purple.500" borderRadius="full" color="white">
+                    <Icon as={FiUpload} w={8} h={8} />
+                  </Box>
+                  <VStack spacing={2} textAlign="center">
+                    <Text fontSize="xl" fontWeight="bold" color="purple.700">
+                      Upload Video
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                      Upload an existing video file from your device. Perfect for pre-recorded demos or screen captures.
+                    </Text>
+                  </VStack>
+                  <Button
+                    colorScheme="purple"
+                    variant="solid"
+                    size="md"
+                    w="full"
+                    onClick={handleUploadClick}
+                    _hover={{ transform: "none" }}>
+                    Choose File
+                  </Button>
+                </VStack>
+              </Box>
 
-              <Button
-                h="120px"
-                w="120px"
-                colorScheme="purple"
-                fontSize="xl"
-                fontWeight="bold"
-                onClick={handleRecordClick}
-                isLoading={state.isPreparing}
-                loadingText="Starting..."
-                display="flex"
-                flexDirection="column"
-                gap={3}>
-                <Icon as={FiCamera} w={8} h={8} />
-                Record
-              </Button>
+              {/* Record Option */}
+              <Box
+                p={6}
+                borderWidth="2px"
+                borderColor="green.200"
+                borderRadius="xl"
+                bg="green.50"
+                _hover={{
+                  borderColor: "green.300",
+                  bg: "green.100",
+                  transform: "translateY(-2px)",
+                  shadow: "lg",
+                }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={handleRecordClick}>
+                <VStack spacing={4} align="center" h="full">
+                  <Box p={4} bg="green.500" borderRadius="full" color="white">
+                    <Icon as={FiCamera} w={8} h={8} />
+                  </Box>
+                  <VStack spacing={2} textAlign="center">
+                    <Text fontSize="xl" fontWeight="bold" color="green.700">
+                      Record New Video
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" lineHeight="1.4">
+                      Record your screen with webcam overlay. Great for live demos, bug reports, and feature explanations.
+                    </Text>
+                  </VStack>
+                  <Button
+                    colorScheme="green"
+                    variant="solid"
+                    size="md"
+                    w="full"
+                    onClick={handleRecordClick}
+                    isLoading={state.isPreparing}
+                    loadingText="Starting..."
+                    _hover={{ transform: "none" }}>
+                    Start Recording
+                  </Button>
+                </VStack>
+              </Box>
             </SimpleGrid>
+
+            {/* Additional Info */}
+            <Box mt={6} p={4} bg="blue.50" borderRadius="lg" borderWidth="1px" borderColor="blue.200">
+              <VStack spacing={2} align="start">
+                <Text fontSize="sm" fontWeight="semibold" color="blue.700">
+                  💡 Pro Tips:
+                </Text>
+                <VStack spacing={1} align="start" fontSize="xs" color="blue.600">
+                  <Text>• Videos are automatically uploaded to cloud storage</Text>
+                  <Text>• AI will analyze your video to generate detailed tickets</Text>
+                  <Text>• Add notes to videos for better ticket generation</Text>
+                  <Text>• Supported formats: MP4, WebM, MOV, AVI</Text>
+                </VStack>
+              </VStack>
+            </Box>
           </ModalBody>
         </ModalContent>
       </Modal>
