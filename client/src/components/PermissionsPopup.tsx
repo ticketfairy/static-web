@@ -37,60 +37,6 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
         {/* Header */}
         <HStack justify="space-between" p={4} pb={3}>
           <IconButton aria-label="Close" icon={<Icon as={FiX} />} size="sm" variant="ghost" onClick={onClose} borderRadius="full" />
-          <HStack spacing={2}>
-            <IconButton
-              aria-label="Monitor"
-              icon={<Icon as={FiMonitor} />}
-              size="sm"
-              variant="ghost"
-              borderRadius="md"
-              bg={selectedBg}
-              border="1px solid"
-              borderColor={selectedBorder}
-            />
-            <IconButton
-              aria-label="Camera"
-              icon={
-                <Box
-                  as="svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  width="18"
-                  height="18">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                  <path d="M16 3l-2 4H10L8 3"></path>
-                </Box>
-              }
-              size="sm"
-              variant="ghost"
-              borderRadius="md"
-            />
-            <IconButton
-              aria-label="Home"
-              icon={
-                <Box
-                  as="svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  width="18"
-                  height="18">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </Box>
-              }
-              size="sm"
-              variant="ghost"
-              borderRadius="md"
-            />
-          </HStack>
         </HStack>
 
         {/* Window Selection */}

@@ -22,11 +22,11 @@ export function DraggableWebcamOverlay({
   size = 150,
   isRecording = false,
   isCountingDown = false,
-  countdown = 3
+  countdown = 3,
 }: DraggableWebcamOverlayProps) {
   const [position, setPosition] = useState<Position>({
     x: window.innerWidth - size - 20,
-    y: window.innerHeight - size - 20
+    y: window.innerHeight - size - 20,
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -48,14 +48,14 @@ export function DraggableWebcamOverlay({
       const maxX = window.innerWidth - size;
       const maxY = window.innerHeight - size;
 
-      setPosition(prev => ({
+      setPosition((prev) => ({
         x: Math.min(prev.x, maxX),
-        y: Math.min(prev.y, maxY)
+        y: Math.min(prev.y, maxY),
       }));
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [size]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -69,25 +69,28 @@ export function DraggableWebcamOverlay({
     if (rect) {
       setDragOffset({
         x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        y: e.clientY - rect.top,
       });
     }
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
 
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
 
-    const maxX = window.innerWidth - size;
-    const maxY = window.innerHeight - size;
+      const maxX = window.innerWidth - size;
+      const maxY = window.innerHeight - size;
 
-    setPosition({
-      x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY))
-    });
-  }, [isDragging, dragOffset.x, dragOffset.y, size]);
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY)),
+      });
+    },
+    [isDragging, dragOffset.x, dragOffset.y, size]
+  );
 
   const handleMouseUp = () => {
     setIsDragging(false);
@@ -95,12 +98,12 @@ export function DraggableWebcamOverlay({
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
       };
     }
   }, [isDragging, dragOffset, handleMouseMove]);
@@ -119,7 +122,7 @@ export function DraggableWebcamOverlay({
       height={`${size}px`}
       borderRadius="50%"
       overflow="hidden"
-      cursor={isRecording ? "pointer" : (isDragging ? "grabbing" : "grab")}
+      cursor={isRecording ? "pointer" : isDragging ? "grabbing" : "grab"}
       zIndex={9999}
       border="3px solid white"
       boxShadow={`0 4px 12px ${shadowColor}`}
@@ -128,9 +131,8 @@ export function DraggableWebcamOverlay({
       onMouseDown={handleMouseDown}
       _hover={{
         transform: "scale(1.05)",
-        boxShadow: `0 6px 16px ${shadowColor}`
-      }}
-    >
+        boxShadow: `0 6px 16px ${shadowColor}`,
+      }}>
       <Box
         as="video"
         ref={videoRef}
@@ -142,7 +144,7 @@ export function DraggableWebcamOverlay({
         autoPlay
         style={{
           transform: "scaleX(-1)", // Mirror the video like a selfie camera
-          pointerEvents: "none"
+          pointerEvents: "none",
         }}
       />
 
@@ -163,32 +165,8 @@ export function DraggableWebcamOverlay({
           borderRadius="50%"
           fontSize="4xl"
           fontWeight="bold"
-          pointerEvents="none"
-        >
+          pointerEvents="none">
           {countdown}
-        </Box>
-      )}
-
-      {/* Recording Status Overlay */}
-      {isRecording && !isCountingDown && (
-        <Box
-          position="absolute"
-          top="50%"
-          left="50%"
-          transform="translate(-50%, -50%)"
-          bg="rgba(255,0,0,0.8)"
-          color="white"
-          px={3}
-          py={2}
-          borderRadius="md"
-          fontSize="sm"
-          fontWeight="bold"
-          pointerEvents="none"
-          textAlign="center"
-        >
-          REC
-          <br />
-          Click to Stop
         </Box>
       )}
 
@@ -206,8 +184,7 @@ export function DraggableWebcamOverlay({
           borderRadius="md"
           fontSize="xs"
           fontWeight="bold"
-          pointerEvents="none"
-        >
+          pointerEvents="none">
           Move
         </Box>
       )}
