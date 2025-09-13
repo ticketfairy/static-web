@@ -1,32 +1,13 @@
-import { Box, Button, Flex, Heading, Text, VStack, HStack, Icon, SimpleGrid, useColorModeValue, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure, Input } from "@chakra-ui/react";
-import { FiVideo, FiMic, FiEdit, FiUsers, FiClock, FiTrendingUp, FiUpload, FiCamera } from "react-icons/fi";
-import { useState, useRef } from "react";
+import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue } from "@chakra-ui/react";
+import { FiVideo, FiMic, FiUsers, FiClock, FiTrendingUp, FiSearch, FiHelpCircle } from "react-icons/fi";
 
-function LandingPage() {
+interface LandingPageProps {
+  onNavigateToVideo: () => void;
+}
+
+function LandingPage({ onNavigateToVideo }: LandingPageProps) {
   const bgColor = useColorModeValue("white", "gray.900");
   const textColor = useColorModeValue("gray.600", "gray.300");
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleRecordClick = () => {
-    setIsRecording(true);
-    // TODO: Implement video recording functionality
-    alert('Video recording functionality will be implemented soon!');
-    setIsRecording(false);
-  };
 
   return (
     <Box bg={bgColor} minH="100vh">
@@ -55,8 +36,8 @@ function LandingPage() {
             preserving the video for richer context.
           </Text>
 
-          <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onOpen}>
-            Create Ticket
+          <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onNavigateToVideo}>
+            Ticket Fairy
           </Button>
         </VStack>
 
@@ -64,18 +45,18 @@ function LandingPage() {
         <Box w="full" py={16}>
           <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
             <Heading fontSize="3xl" color="red.400">
-              The Problems We Solve
+              🧚‍♀️ Tickets are Toothaches 🦷
             </Heading>
 
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiUsers} w={10} h={10} color="red.400" />
+                  <Icon as={FiSearch} w={10} h={10} color="red.400" />
                   <Text fontWeight="bold" fontSize="lg">
-                    Poor Team Visibility
+                    🦷🔍 Hidden Cavities
                   </Text>
                   <Text color={textColor} textAlign="center">
-                    Developers often have little understanding of what other team members are working on
+                    Team members work in isolation, creating hidden problems that go undetected until they become painful
                   </Text>
                 </VStack>
               </Box>
@@ -84,22 +65,22 @@ function LandingPage() {
                 <VStack spacing={4}>
                   <Icon as={FiClock} w={10} h={10} color="red.400" />
                   <Text fontWeight="bold" fontSize="lg">
-                    Time-Consuming Documentation
+                    ⏰🦷 Endless Root Canal
                   </Text>
                   <Text color={textColor} textAlign="center">
-                    Writing tickets is time consuming and often doesn't capture all the detail needed
+                    Writing detailed tickets feels like a never-ending procedure that drains time and energy
                   </Text>
                 </VStack>
               </Box>
 
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiEdit} w={10} h={10} color="red.400" />
+                  <Icon as={FiHelpCircle} w={10} h={10} color="red.400" />
                   <Text fontWeight="bold" fontSize="lg">
-                    Vague Requirements
+                    😵🦷 Toothache Without a Cause
                   </Text>
                   <Text color={textColor} textAlign="center">
-                    Tickets are sometimes vague, making it hard for team members to understand the work
+                    Unclear tickets cause confusion and pain, making it impossible to know what's actually needed
                   </Text>
                 </VStack>
               </Box>
@@ -108,10 +89,10 @@ function LandingPage() {
                 <VStack spacing={4}>
                   <Icon as={FiTrendingUp} w={10} h={10} color="red.400" />
                   <Text fontWeight="bold" fontSize="lg">
-                    Slow Onboarding
+                    🌱🦷 Wisdom Teeth Coming In
                   </Text>
                   <Text color={textColor} textAlign="center">
-                    High barrier of entry for new team members, leading to slower onboarding times
+                    New team members experience growing pains as they slowly break through existing workflows
                   </Text>
                 </VStack>
               </Box>
@@ -166,83 +147,8 @@ function LandingPage() {
           </VStack>
         </Box>
 
-        {/* CTA Section */}
-        <Box w="full" py={16} textAlign="center">
-          <VStack spacing={6} px={4} maxW="1200px" mx="auto">
-            <Heading fontSize="2xl">Ready to transform your team's workflow?</Heading>
-            <Text color={textColor} fontSize="lg">
-              Make working with your team easy and exciting. Abstract the annoying tasks.
-            </Text>
-            <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onOpen}>
-              Create Ticket
-            </Button>
-          </VStack>
-        </Box>
       </Box>
 
-      {/* Video Upload Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Create Ticket</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={6}>
-              <Text color={textColor} textAlign="center">
-                Choose how you'd like to create your ticket:
-              </Text>
-
-              <VStack spacing={4} w="full">
-                <Button
-                  leftIcon={<Icon as={FiUpload} />}
-                  colorScheme="purple"
-                  variant="outline"
-                  size="lg"
-                  w="full"
-                  onClick={handleUploadClick}
-                >
-                  Upload Video
-                </Button>
-
-                <Button
-                  leftIcon={<Icon as={FiCamera} />}
-                  colorScheme="purple"
-                  size="lg"
-                  w="full"
-                  onClick={handleRecordClick}
-                  isLoading={isRecording}
-                  loadingText="Starting Recording..."
-                >
-                  Record Video
-                </Button>
-              </VStack>
-
-              {selectedFile && (
-                <Box p={4} borderRadius="md" bg="gray.50" w="full">
-                  <Text fontSize="sm" color="gray.600">
-                    Selected file: {selectedFile.name}
-                  </Text>
-                </Box>
-              )}
-            </VStack>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Hidden file input */}
-      <Input
-        type="file"
-        accept="video/*"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        display="none"
-      />
     </Box>
   );
 }

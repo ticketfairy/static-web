@@ -1,7 +1,7 @@
-import LandingPage from "./components/LandingPage";
+import NavigationApp from "./components/App";
 
 function App() {
-  return <LandingPage />;
+  return <NavigationApp />;
 }
 
 export default App;
