@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // Configuration for your S3 bucket
 const BUCKET_NAME = "ticketfairy-production";
@@ -35,6 +35,11 @@ export interface S3VideoMetadata {
 export interface S3ListResult {
   success: boolean;
   videos?: S3VideoMetadata[];
+  error?: string;
+}
+
+export interface S3DeleteResult {
+  success: boolean;
   error?: string;
 }
 
@@ -218,6 +223,35 @@ export class S3VideoUploader {
     } catch (error) {
       console.error("Failed to get video metadata:", error);
       return null;
+    }
+  }
+
+  // Delete a video from S3
+  async deleteVideo(key: string): Promise<S3DeleteResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("S3 delete error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete video",
+      };
     }
   }
 

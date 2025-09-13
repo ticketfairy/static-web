@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { s3Uploader, S3VideoUploader } from "../utils/s3Upload";
-import type { S3UploadResult, S3ListResult, S3VideoMetadata } from "../utils/s3Upload";
+import type { S3UploadResult, S3ListResult, S3VideoMetadata, S3DeleteResult } from "../utils/s3Upload";
 
 export interface UploadState {
   isUploading: boolean;
@@ -25,6 +25,7 @@ export interface VideoListState {
 export interface UseS3VideoListReturn {
   listState: VideoListState;
   refreshVideoList: () => Promise<void>;
+  deleteVideo: (key: string) => Promise<S3DeleteResult>;
   isConfigured: boolean;
 }
 
@@ -146,6 +147,37 @@ export const useS3VideoList = (customUploader?: S3VideoUploader): UseS3VideoList
     }
   }, [uploader, isConfigured]);
 
+  const deleteVideo = useCallback(
+    async (key: string): Promise<S3DeleteResult> => {
+      if (!isConfigured) {
+        return {
+          success: false,
+          error: "S3 not configured. Please set up AWS credentials.",
+        };
+      }
+
+      try {
+        const result = await uploader.deleteVideo(key);
+
+        if (result.success) {
+          // Remove the video from local state immediately
+          setListState((prev) => ({
+            ...prev,
+            videos: prev.videos.filter((video) => video.key !== key),
+          }));
+        }
+
+        return result;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to delete video",
+        };
+      }
+    },
+    [uploader, isConfigured]
+  );
+
   // Auto-load videos on mount if configured
   useEffect(() => {
     if (isConfigured) {
@@ -156,6 +188,7 @@ export const useS3VideoList = (customUploader?: S3VideoUploader): UseS3VideoList
   return {
     listState,
     refreshVideoList,
+    deleteVideo,
     isConfigured,
   };
 };

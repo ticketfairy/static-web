@@ -10,6 +10,8 @@ import {
   ModalContent,
   ModalBody,
   ModalCloseButton,
+  ModalHeader,
+  ModalFooter,
   useDisclosure,
   Input,
   useToast,
@@ -21,7 +23,7 @@ import {
   Alert,
   AlertIcon,
 } from "@chakra-ui/react";
-import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud } from "react-icons/fi";
+import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2 } from "react-icons/fi";
 import { useState, useRef, useMemo } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import { RecordingModal } from "./RecordingModal";
@@ -48,8 +50,11 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const { isOpen: isRecordingModalOpen, onOpen: onRecordingModalOpen, onClose: onRecordingModalClose } = useDisclosure();
   const { isOpen: isVideoPreviewOpen, onClose: onVideoPreviewClose } = useDisclosure();
   const { isOpen: isTicketModalOpen, onOpen: onTicketModalOpen, onClose: onTicketModalClose } = useDisclosure();
+  const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
 
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<VideoItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Dynamic video collection state
   interface VideoItem {
@@ -77,7 +82,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const { uploadVideo, isConfigured: isS3Configured } = useS3Upload();
 
   // S3 video listing hook
-  const { listState, refreshVideoList, isConfigured: isS3ListConfigured } = useS3VideoList();
+  const { listState, refreshVideoList, deleteVideo: deleteS3Video, isConfigured: isS3ListConfigured } = useS3VideoList();
 
   // Helper function to convert S3 video to VideoItem format
   const convertS3VideoToVideoItem = (s3Video: S3VideoMetadata): VideoItem => {
@@ -246,6 +251,53 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   // Helper function to update video notes
   const updateVideoNotes = (videoId: string, notes: string) => {
     setVideos((prev) => prev.map((video) => (video.id === videoId ? { ...video, notes } : video)));
+  };
+
+  // Helper function to handle delete video confirmation
+  const handleDeleteVideo = (video: VideoItem) => {
+    setVideoToDelete(video);
+    onDeleteModalOpen();
+  };
+
+  // Helper function to confirm and delete video
+  const confirmDeleteVideo = async () => {
+    if (!videoToDelete) return;
+
+    setIsDeleting(true);
+
+    try {
+      // If it's an S3 video, delete from S3
+      if (videoToDelete.s3Key) {
+        const result = await deleteS3Video(videoToDelete.s3Key);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to delete video from S3");
+        }
+      }
+
+      // Remove from local videos state (for both local and S3 videos)
+      setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
+
+      toast({
+        title: "Video Deleted",
+        description: `"${videoToDelete.title}" has been deleted successfully`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error("Failed to delete video:", error);
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete video",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsDeleting(false);
+      setVideoToDelete(null);
+      onDeleteModalClose();
+    }
   };
 
   const {
@@ -651,6 +703,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         isDisabled={!video.blob && !video.s3Url}>
                         Get Link
                       </Button>
+                      <Button size="sm" colorScheme="red" variant="ghost" onClick={() => handleDeleteVideo(video)} title="Delete video">
+                        <Icon as={FiTrash2} />
+                      </Button>
                     </Flex>
 
                     <Button size="sm" colorScheme="purple" variant="solid" w="full">
@@ -772,6 +827,37 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         }}
         onStartRecording={startCountdownAndRecord}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Delete Video</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <Text>Are you sure you want to delete "{videoToDelete?.title}"?</Text>
+              {videoToDelete?.s3Key && (
+                <Alert status="warning" size="sm">
+                  <AlertIcon />
+                  <Text fontSize="sm">This video is stored in cloud storage and will be permanently deleted.</Text>
+                </Alert>
+              )}
+              <Text fontSize="sm" color="gray.600">
+                This action cannot be undone.
+              </Text>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onDeleteModalClose} isDisabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={confirmDeleteVideo} isLoading={isDeleting} loadingText="Deleting...">
+              Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 }
