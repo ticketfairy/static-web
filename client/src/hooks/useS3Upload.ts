@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { s3Uploader, S3VideoUploader } from "../utils/s3Upload";
-import type { S3UploadResult } from "../utils/s3Upload";
+import type { S3UploadResult, S3ListResult, S3VideoMetadata } from "../utils/s3Upload";
 
 export interface UploadState {
   isUploading: boolean;
@@ -13,6 +13,18 @@ export interface UseS3UploadReturn {
   uploadState: UploadState;
   uploadVideo: (videoBlob: Blob, filename?: string) => Promise<S3UploadResult>;
   resetUploadState: () => void;
+  isConfigured: boolean;
+}
+
+export interface VideoListState {
+  isLoading: boolean;
+  videos: S3VideoMetadata[];
+  error: string | null;
+}
+
+export interface UseS3VideoListReturn {
+  listState: VideoListState;
+  refreshVideoList: () => Promise<void>;
   isConfigured: boolean;
 }
 
@@ -83,6 +95,67 @@ export const useS3Upload = (customUploader?: S3VideoUploader): UseS3UploadReturn
     uploadState,
     uploadVideo,
     resetUploadState,
+    isConfigured,
+  };
+};
+
+export const useS3VideoList = (customUploader?: S3VideoUploader): UseS3VideoListReturn => {
+  const [listState, setListState] = useState<VideoListState>({
+    isLoading: false,
+    videos: [],
+    error: null,
+  });
+
+  const uploader = customUploader || s3Uploader;
+
+  // Check if uploader is properly configured
+  const isConfigured = Boolean(uploader);
+
+  const refreshVideoList = useCallback(async (): Promise<void> => {
+    if (!isConfigured) {
+      setListState({
+        isLoading: false,
+        videos: [],
+        error: "S3 not configured. Please set up AWS credentials.",
+      });
+      return;
+    }
+
+    setListState((prev) => ({
+      ...prev,
+      isLoading: true,
+      error: null,
+    }));
+
+    try {
+      const result: S3ListResult = await uploader.listVideos();
+
+      setListState({
+        isLoading: false,
+        videos: result.success ? result.videos || [] : [],
+        error: result.success ? null : result.error || "Failed to load videos",
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load videos";
+
+      setListState({
+        isLoading: false,
+        videos: [],
+        error: errorMessage,
+      });
+    }
+  }, [uploader, isConfigured]);
+
+  // Auto-load videos on mount if configured
+  useEffect(() => {
+    if (isConfigured) {
+      refreshVideoList();
+    }
+  }, [isConfigured, refreshVideoList]);
+
+  return {
+    listState,
+    refreshVideoList,
     isConfigured,
   };
 };

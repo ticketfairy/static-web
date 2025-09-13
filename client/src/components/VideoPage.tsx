@@ -22,7 +22,7 @@ import {
   AlertIcon,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud } from "react-icons/fi";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import { RecordingModal } from "./RecordingModal";
 import { FloatingRecordingControls } from "./FloatingRecordingControls";
@@ -34,7 +34,8 @@ import { PermissionsPopup } from "./PermissionsPopup";
 import { ReadyToRecordModal } from "./ReadyToRecordModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
-import { useS3Upload } from "../hooks/useS3Upload";
+import { useS3Upload, useS3VideoList } from "../hooks/useS3Upload";
+import type { S3VideoMetadata } from "../utils/s3Upload";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -67,44 +68,62 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     uploadProgress?: number;
   }
 
-  const [videos, setVideos] = useState<VideoItem[]>([
-    {
-      id: "sample-1",
-      title: "Fix Login Bug",
-      description: "Screen recording showing authentication issue reproduction and debugging steps",
-      duration: "2:34",
-      thumbnailColor: "purple.100",
-      thumbnailIconColor: "purple.500",
-      notes: "",
-      createdAt: new Date(Date.now() - 86400000), // 1 day ago
-    },
-    {
-      id: "sample-2",
-      title: "New Dashboard Feature",
-      description: "Walkthrough of implementing user analytics dashboard with real-time data",
-      duration: "4:12",
-      thumbnailColor: "blue.100",
-      thumbnailIconColor: "blue.500",
-      notes: "",
-      createdAt: new Date(Date.now() - 172800000), // 2 days ago
-    },
-    {
-      id: "sample-3",
-      title: "Database Migration",
-      description: "Step-by-step database schema update and data migration process",
-      duration: "6:45",
-      thumbnailColor: "green.100",
-      thumbnailIconColor: "green.500",
-      notes: "",
-      createdAt: new Date(Date.now() - 259200000), // 3 days ago
-    },
-  ]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
   const { saveToVideos } = useSaveToVideos();
   const { uploadVideo, isConfigured: isS3Configured } = useS3Upload();
+
+  // S3 video listing hook
+  const { listState, refreshVideoList, isConfigured: isS3ListConfigured } = useS3VideoList();
+
+  // Helper function to convert S3 video to VideoItem format
+  const convertS3VideoToVideoItem = (s3Video: S3VideoMetadata): VideoItem => {
+    // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.webm")
+    const keyParts = s3Video.key.split("/");
+    const filename = keyParts[keyParts.length - 1];
+    const nameWithoutExt = filename.split(".")[0];
+
+    // Try to extract timestamp from filename
+    const timestampMatch = nameWithoutExt.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/);
+    let title = "Screen Recording";
+    let createdAt = s3Video.lastModified;
+
+    if (timestampMatch) {
+      const timestamp = timestampMatch[1].replace(/-/g, ":").replace("T", " ").replace("Z", "");
+      title = `Recording ${timestamp}`;
+    }
+
+    // Generate a reasonable duration estimate based on file size (very rough)
+    const estimatedDuration = Math.max(30, Math.min(600, Math.floor(s3Video.size / 100000))); // rough estimate
+    const minutes = Math.floor(estimatedDuration / 60);
+    const seconds = estimatedDuration % 60;
+    const durationString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+    return {
+      id: s3Video.key,
+      title,
+      description: `Video uploaded to S3 (${(s3Video.size / (1024 * 1024)).toFixed(1)} MB)`,
+      duration: durationString,
+      thumbnailColor: "teal.100",
+      thumbnailIconColor: "teal.500",
+      notes: "",
+      createdAt,
+      s3Url: s3Video.url,
+      s3Key: s3Video.key,
+    };
+  };
+
+  // Merge local videos with S3 videos
+  const allVideos = useMemo(() => {
+    const s3Videos = listState.videos.map(convertS3VideoToVideoItem);
+    const localVideos = videos.filter((video) => !video.s3Key); // Only include local videos without S3 keys
+
+    // Combine and sort by creation date (newest first)
+    return [...s3Videos, ...localVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [listState.videos, videos]);
 
   // Helper function to generate video duration from blob
   const getVideoDuration = (blob: Blob): Promise<string> => {
@@ -163,6 +182,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           duration: 4000,
           isClosable: true,
         });
+
+        // Refresh the S3 video list to include the newly uploaded video
+        if (isS3ListConfigured) {
+          setTimeout(() => {
+            refreshVideoList();
+          }, 1000); // Small delay to ensure S3 is consistent
+        }
       } else {
         throw new Error(result.error || "Upload failed");
       }
@@ -483,8 +509,30 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               Tickets 🦷
             </Heading>
 
+            {/* Loading state for S3 videos */}
+            {listState.isLoading && (
+              <Text textAlign="center" color="gray.500">
+                Loading videos from cloud storage...
+              </Text>
+            )}
+
+            {/* Error state for S3 videos */}
+            {listState.error && isS3ListConfigured && (
+              <Alert status="warning" borderRadius="md" maxW="600px">
+                <AlertIcon />
+                <Text>{listState.error}</Text>
+              </Alert>
+            )}
+
+            {/* Refresh button */}
+            {isS3ListConfigured && (
+              <Button size="sm" variant="outline" onClick={refreshVideoList} isLoading={listState.isLoading} loadingText="Refreshing...">
+                Refresh Videos
+              </Button>
+            )}
+
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} w="full">
-              {videos.map((video) => (
+              {allVideos.map((video) => (
                 <Box key={video.id} p={6} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
                   <VStack spacing={4} align="stretch">
                     <Box
