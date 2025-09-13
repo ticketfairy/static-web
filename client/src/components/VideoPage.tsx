@@ -84,17 +84,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.webm")
     const keyParts = s3Video.key.split("/");
     const filename = keyParts[keyParts.length - 1];
-    const nameWithoutExt = filename.split(".")[0];
 
     // Try to extract timestamp from filename
-    const timestampMatch = nameWithoutExt.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)/);
-    let title = "Screen Recording";
+    let title = filename;
     let createdAt = s3Video.lastModified;
-
-    if (timestampMatch) {
-      const timestamp = timestampMatch[1].replace(/-/g, ":").replace("T", " ").replace("Z", "");
-      title = `Recording ${timestamp}`;
-    }
 
     // Generate a reasonable duration estimate based on file size (very rough)
     const estimatedDuration = Math.max(30, Math.min(600, Math.floor(s3Video.size / 100000))); // rough estimate
