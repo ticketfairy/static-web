@@ -1,15 +1,4 @@
-import {
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Button,
-  Switch,
-  Icon,
-  IconButton,
-  useColorModeValue,
-  Divider,
-} from "@chakra-ui/react";
+import { Box, VStack, HStack, Text, Button, Switch, Icon, IconButton, useColorModeValue, Divider } from "@chakra-ui/react";
 import { FiX, FiMonitor, FiMic, FiSettings, FiFilter, FiMoreHorizontal } from "react-icons/fi";
 import { useState } from "react";
 
@@ -43,19 +32,11 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
       border="1px solid"
       borderColor={borderColor}
       zIndex={10000}
-      overflow="hidden"
-    >
+      overflow="hidden">
       <VStack spacing={0} align="stretch">
         {/* Header */}
         <HStack justify="space-between" p={4} pb={3}>
-          <IconButton
-            aria-label="Close"
-            icon={<Icon as={FiX} />}
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            borderRadius="full"
-          />
+          <IconButton aria-label="Close" icon={<Icon as={FiX} />} size="sm" variant="ghost" onClick={onClose} borderRadius="full" />
           <HStack spacing={2}>
             <IconButton
               aria-label="Monitor"
@@ -69,20 +50,42 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
             />
             <IconButton
               aria-label="Camera"
-              icon={<Box as="svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 3l-2 4H10L8 3"></path>
-              </Box>}
+              icon={
+                <Box
+                  as="svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  width="18"
+                  height="18">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 3l-2 4H10L8 3"></path>
+                </Box>
+              }
               size="sm"
               variant="ghost"
               borderRadius="md"
             />
             <IconButton
               aria-label="Home"
-              icon={<Box as="svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </Box>}
+              icon={
+                <Box
+                  as="svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  width="18"
+                  height="18">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </Box>
+              }
               size="sm"
               variant="ghost"
               borderRadius="md"
@@ -102,8 +105,7 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
             borderRadius="lg"
             p={3}
             cursor="pointer"
-            _hover={{ bg: hoverBg }}
-          >
+            _hover={{ bg: hoverBg }}>
             <HStack justify="space-between">
               <HStack spacing={3}>
                 <Icon as={FiMonitor} color={selectedBorder} />
@@ -111,15 +113,7 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
                   MacBook Air Camera
                 </Text>
               </HStack>
-              <Box
-                bg="green.500"
-                color="white"
-                px={2}
-                py={0.5}
-                borderRadius="full"
-                fontSize="xs"
-                fontWeight="bold"
-              >
+              <Box bg="green.500" color="white" px={2} py={0.5} borderRadius="full" fontSize="xs" fontWeight="bold">
                 On
               </Box>
             </HStack>
@@ -159,21 +153,20 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
             _active={{ bg: "orange.700" }}
             fontWeight="bold"
             onClick={onStartRecording}
-            borderRadius="lg"
-          >
+            borderRadius="lg">
             Start Recording
           </Button>
         </Box>
 
         {/* Recording Limit */}
         <Text fontSize="xs" color="gray.500" textAlign="center" px={4} pb={3}>
-          5 min recording limit
+          2 min recording limit
         </Text>
 
         <Divider />
 
         {/* Bottom Options */}
-        <HStack justify="center" p={3} spacing={6}>
+        {/* <HStack justify="center" p={3} spacing={6}>
           <HStack spacing={1} cursor="pointer" _hover={{ color: "blue.500" }}>
             <Icon as={FiSettings} size="sm" />
             <Text fontSize="xs">Effects</Text>
@@ -186,7 +179,7 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
             <Icon as={FiMoreHorizontal} size="sm" />
             <Text fontSize="xs">More</Text>
           </HStack>
-        </HStack>
+        </HStack> */}
       </VStack>
     </Box>
   );

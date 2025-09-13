@@ -1,0 +1,11 @@
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": ["http://localhost:5173", "https://ticketfairy.app"],
+      "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+      "AllowedHeaders": ["*"],
+      "ExposeHeaders": ["ETag", "x-amz-request-id", "x-amz-id-2"],
+      "MaxAgeSeconds": 3000
+    }
+  ]
+}
