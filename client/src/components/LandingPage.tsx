@@ -1,9 +1,32 @@
-import { Box, Button, Flex, Heading, Text, VStack, HStack, Icon, SimpleGrid, useColorModeValue } from "@chakra-ui/react";
-import { FiVideo, FiMic, FiEdit, FiUsers, FiClock, FiTrendingUp } from "react-icons/fi";
+import { Box, Button, Flex, Heading, Text, VStack, HStack, Icon, SimpleGrid, useColorModeValue, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure, Input } from "@chakra-ui/react";
+import { FiVideo, FiMic, FiEdit, FiUsers, FiClock, FiTrendingUp, FiUpload, FiCamera } from "react-icons/fi";
+import { useState, useRef } from "react";
 
 function LandingPage() {
   const bgColor = useColorModeValue("white", "gray.900");
   const textColor = useColorModeValue("gray.600", "gray.300");
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('video/')) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRecordClick = () => {
+    setIsRecording(true);
+    // TODO: Implement video recording functionality
+    alert('Video recording functionality will be implemented soon!');
+    setIsRecording(false);
+  };
 
   return (
     <Box bg={bgColor} minH="100vh">
@@ -15,9 +38,6 @@ function LandingPage() {
           </Heading>
         </Flex>
 
-        <Button colorScheme="purple" variant="solid" size="md" rightIcon={<Icon as={FiVideo} />}>
-          Enter Demo
-        </Button>
       </Flex>
 
       {/* Hero Section */}
@@ -35,14 +55,9 @@ function LandingPage() {
             preserving the video for richer context.
           </Text>
 
-          <HStack spacing={4}>
-            <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />}>
-              Try Demo
-            </Button>
-            <Button variant="outline" size="lg">
-              Learn More
-            </Button>
-          </HStack>
+          <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onOpen}>
+            Create Ticket
+          </Button>
         </VStack>
 
         {/* Problem Section */}
@@ -158,12 +173,76 @@ function LandingPage() {
             <Text color={textColor} fontSize="lg">
               Make working with your team easy and exciting. Abstract the annoying tasks.
             </Text>
-            <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />}>
-              Try the Demo
+            <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onOpen}>
+              Create Ticket
             </Button>
           </VStack>
         </Box>
       </Box>
+
+      {/* Video Upload Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} size="lg">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Create Ticket</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={6}>
+              <Text color={textColor} textAlign="center">
+                Choose how you'd like to create your ticket:
+              </Text>
+
+              <VStack spacing={4} w="full">
+                <Button
+                  leftIcon={<Icon as={FiUpload} />}
+                  colorScheme="purple"
+                  variant="outline"
+                  size="lg"
+                  w="full"
+                  onClick={handleUploadClick}
+                >
+                  Upload Video
+                </Button>
+
+                <Button
+                  leftIcon={<Icon as={FiCamera} />}
+                  colorScheme="purple"
+                  size="lg"
+                  w="full"
+                  onClick={handleRecordClick}
+                  isLoading={isRecording}
+                  loadingText="Starting Recording..."
+                >
+                  Record Video
+                </Button>
+              </VStack>
+
+              {selectedFile && (
+                <Box p={4} borderRadius="md" bg="gray.50" w="full">
+                  <Text fontSize="sm" color="gray.600">
+                    Selected file: {selectedFile.name}
+                  </Text>
+                </Box>
+              )}
+            </VStack>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Hidden file input */}
+      <Input
+        type="file"
+        accept="video/*"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        display="none"
+      />
     </Box>
   );
 }
