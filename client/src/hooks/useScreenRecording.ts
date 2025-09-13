@@ -222,40 +222,104 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
   }, []);
 
   const createCombinedStream = useCallback((screenStream: MediaStream, webcamStream: MediaStream): MediaStream => {
-    // 1) Pull the video track from the screen
-    const screenVideo = screenStream.getVideoTracks()[0];
-    if (!screenVideo) throw new Error("No video track in screen stream");
+    console.log("Creating combined stream...");
+    console.log("Screen stream tracks:", {
+      video: screenStream.getVideoTracks().length,
+      audio: screenStream.getAudioTracks().length,
+    });
+    console.log("Webcam stream tracks:", {
+      video: webcamStream.getVideoTracks().length,
+      audio: webcamStream.getAudioTracks().length,
+    });
 
-    // 2) Build an AudioContext to normalize/mix audio
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 48000 });
-    const dest = audioCtx.createMediaStreamDestination();
-
-    // 3) Add screen audio if present (tab/system audio)
-    const screenAudios = screenStream.getAudioTracks();
-    if (screenAudios.length > 0) {
-      const screenSource = audioCtx.createMediaStreamSource(new MediaStream([screenAudios[0]]));
-      screenSource.connect(dest);
-    }
-
-    // 4) Add mic audio if present
-    const micAudios = webcamStream.getAudioTracks();
-    if (micAudios.length > 0) {
-      const micSource = audioCtx.createMediaStreamSource(new MediaStream([micAudios[0]]));
-      micSource.connect(dest);
-    }
-
-    // 5) Build the final stream: screen video + single mixed audio
-    const mixed = new MediaStream();
-    mixed.addTrack(screenVideo);
-    const mixedAudio = dest.stream.getAudioTracks()[0];
-    if (mixedAudio) mixed.addTrack(mixedAudio);
-
-    // Optional: improve encoding hint for display capture
     try {
-      screenVideo.contentHint = "motion";
-    } catch {}
+      // 1) Pull the video track from the screen
+      const screenVideo = screenStream.getVideoTracks()[0];
+      if (!screenVideo) {
+        throw new Error("No video track in screen stream");
+      }
 
-    return mixed;
+      // 2) Create the combined stream starting with screen video
+      const combinedStream = new MediaStream([screenVideo]);
+      console.log("Added screen video track");
+
+      // 3) Handle audio mixing with AudioContext for better quality
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const dest = audioCtx.createMediaStreamDestination();
+      let hasAudio = false;
+
+      // Add screen audio if present (system/tab audio)
+      const screenAudios = screenStream.getAudioTracks();
+      if (screenAudios.length > 0) {
+        console.log("Adding screen audio");
+        const screenSource = audioCtx.createMediaStreamSource(new MediaStream([screenAudios[0]]));
+        screenSource.connect(dest);
+        hasAudio = true;
+      }
+
+      // Add webcam audio if present (microphone)
+      const webcamAudios = webcamStream.getAudioTracks();
+      if (webcamAudios.length > 0) {
+        console.log("Adding webcam audio");
+        const webcamSource = audioCtx.createMediaStreamSource(new MediaStream([webcamAudios[0]]));
+        webcamSource.connect(dest);
+        hasAudio = true;
+      }
+
+      // Add the mixed audio track if we have any audio
+      if (hasAudio) {
+        const mixedAudioTrack = dest.stream.getAudioTracks()[0];
+        if (mixedAudioTrack) {
+          combinedStream.addTrack(mixedAudioTrack);
+          console.log("Added mixed audio track");
+        }
+      }
+
+      // Set content hint for better screen capture encoding
+      try {
+        screenVideo.contentHint = "motion";
+      } catch (e) {
+        console.warn("Could not set contentHint:", e);
+      }
+
+      console.log("Final combined stream:", {
+        video: combinedStream.getVideoTracks().length,
+        audio: combinedStream.getAudioTracks().length,
+        total: combinedStream.getTracks().length,
+      });
+
+      return combinedStream;
+    } catch (error) {
+      console.error("Error creating combined stream with AudioContext, falling back to simple approach:", error);
+
+      // Fallback to simple stream combination
+      const fallbackStream = new MediaStream();
+
+      // Add screen video
+      const screenVideoTracks = screenStream.getVideoTracks();
+      if (screenVideoTracks.length > 0) {
+        fallbackStream.addTrack(screenVideoTracks[0]);
+      }
+
+      // Add screen audio if available
+      const screenAudioTracks = screenStream.getAudioTracks();
+      if (screenAudioTracks.length > 0) {
+        fallbackStream.addTrack(screenAudioTracks[0]);
+      } else {
+        // If no screen audio, add webcam audio
+        const webcamAudioTracks = webcamStream.getAudioTracks();
+        if (webcamAudioTracks.length > 0) {
+          fallbackStream.addTrack(webcamAudioTracks[0]);
+        }
+      }
+
+      console.log("Fallback stream:", {
+        video: fallbackStream.getVideoTracks().length,
+        audio: fallbackStream.getAudioTracks().length,
+      });
+
+      return fallbackStream;
+    }
   }, []);
 
   const showPermissionsPopup = useCallback(() => {
@@ -352,231 +416,17 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
     // Hide ready modal first
     setState((prev) => ({ ...prev, showReadyModal: false }));
 
-    // Add a small delay to ensure state updates have been applied
-    setTimeout(() => {
-      console.log("After timeout, streams:", {
-        webcamStream: !!streams.webcamStream,
-        screenStream: !!streams.screenStream,
-      });
-
-      if (!streams.webcamStream || !streams.screenStream) {
-        console.error("Missing streams after timeout:", { webcamStream: !!streams.webcamStream, screenStream: !!streams.screenStream });
-        setState((prev) => ({ ...prev, error: "Camera or screen not available. Please allow permissions first." }));
-        return;
-      }
-
-      try {
-        // NOW start countdown after permissions are granted
-        setState((prev) => ({ ...prev, isCountingDown: true, countdown: 3 }));
-
-        countdownTimerRef.current = window.setInterval(() => {
-          setState((prev) => {
-            const newCountdown = prev.countdown - 1;
-
-            if (newCountdown <= 0) {
-              if (countdownTimerRef.current) {
-                clearInterval(countdownTimerRef.current);
-                countdownTimerRef.current = null;
-              }
-              return { ...prev, isCountingDown: false, countdown: 0 };
-            }
-
-            return { ...prev, countdown: newCountdown };
-          });
-        }, 1000);
-
-        // Wait for countdown to finish, then start recording
-        setTimeout(async () => {
-          try {
-            // Start recording now that we have both streams
-            const { webcamStream, screenStream } = streams;
-            if (!screenStream || !webcamStream) {
-              throw new Error("Missing required streams for recording");
-            }
-
-            // Try screen-only recording first for better compatibility
-            let recordingStream = screenStream;
-            let streamType = "screen-only";
-
-            // If screen stream doesn't have audio, try combining with webcam
-            if (screenStream.getAudioTracks().length === 0 && webcamStream.getAudioTracks().length > 0) {
-              console.log("Screen has no audio, creating combined stream with webcam audio");
-              recordingStream = createCombinedStream(screenStream, webcamStream);
-              streamType = "combined";
-            }
-
-            console.log(`Using ${streamType} stream for recording:`, {
-              video: recordingStream.getVideoTracks().length,
-              audio: recordingStream.getAudioTracks().length,
-            });
-
-            // Validate the recording stream
-            if (recordingStream.getTracks().length === 0) {
-              throw new Error("No tracks available in recording stream");
-            }
-
-            if (recordingStream.getVideoTracks().length === 0) {
-              throw new Error("No video tracks available for recording");
-            }
-
-            console.log("Setting up MediaRecorder with combined stream...");
-
-            // Check MediaRecorder state if it exists
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-              console.log("Stopping existing MediaRecorder before creating new one");
-              mediaRecorderRef.current.stop();
-              mediaRecorderRef.current = null;
-            }
-
-            // Use most compatible formats first, then try MP4
-            const options = [
-              { mimeType: "video/webm;codecs=vp8" }, // Most compatible
-              { mimeType: "video/webm" }, // Basic WebM
-              { mimeType: "video/mp4" }, // MP4 (limited browser support)
-              { mimeType: "video/webm;codecs=h264" }, // H.264 in WebM
-              {}, // Browser default
-            ];
-
-            let mediaRecorder = null;
-            let lastError = null;
-
-            for (const option of options) {
-              try {
-                console.log("Trying MediaRecorder with option:", option);
-
-                if (option.mimeType && !MediaRecorder.isTypeSupported(option.mimeType)) {
-                  console.log("MIME type not supported:", option.mimeType);
-                  continue;
-                }
-
-                mediaRecorder = new MediaRecorder(recordingStream, option);
-                console.log("MediaRecorder created successfully with:", option);
-                break;
-              } catch (e) {
-                console.warn("Failed to create MediaRecorder with option:", option, e);
-                lastError = e;
-                continue;
-              }
-            }
-
-            if (!mediaRecorder) {
-              console.warn("Failed to create MediaRecorder with primary stream, trying fallback approaches...");
-              // Fallback: try with just the screen stream if we were using combined
-              if (streamType === "combined") {
-                for (const option of options) {
-                  try {
-                    if (option.mimeType && !MediaRecorder.isTypeSupported(option.mimeType)) {
-                      continue;
-                    }
-                    mediaRecorder = new MediaRecorder(screenStream, option);
-                    console.log("MediaRecorder created with screen-only fallback:", option);
-                    break;
-                  } catch (screenError) {
-                    lastError = screenError;
-                    continue;
-                  }
-                }
-              }
-            }
-
-            if (!mediaRecorder) {
-              throw new Error(`Failed to create MediaRecorder with any configuration: ${lastError?.message || "Unknown error"}`);
-            }
-
-            recordedChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-              if (event.data.size > 0) {
-                recordedChunksRef.current.push(event.data);
-              }
-            };
-
-            mediaRecorder.onerror = (event) => {
-              console.error("MediaRecorder error:", event);
-              setState((prev) => ({
-                ...prev,
-                error: "Recording failed. Please try again.",
-                isRecording: false,
-              }));
-            };
-
-            mediaRecorder.onstart = () => {
-              setState((prev) => ({
-                ...prev,
-                isRecording: true,
-                recordingTime: 0,
-                error: null,
-              }));
-
-              // Start the timer
-              timerRef.current = window.setInterval(() => {
-                setState((prev) => ({
-                  ...prev,
-                  recordingTime: prev.recordingTime + 1,
-                }));
-              }, 1000);
-            };
-
-            mediaRecorder.onstop = () => {
-              if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-              }
-            };
-
-            console.log("Starting MediaRecorder...");
-
-            // Set MediaRecorder reference first
-            mediaRecorderRef.current = mediaRecorder;
-
-            // Small delay to ensure everything is set up
-            await new Promise((resolve) => setTimeout(resolve, 100));
-
-            // Ensure MediaRecorder is in the correct state
-            if (mediaRecorder.state !== "inactive") {
-              console.warn("MediaRecorder not in inactive state:", mediaRecorder.state);
-              throw new Error("MediaRecorder is not ready to start");
-            }
-
-            try {
-              // Start without time slice for better compatibility
-              mediaRecorder.start();
-              console.log("MediaRecorder started successfully");
-            } catch (startError) {
-              console.error("Failed to start MediaRecorder:", startError);
-              throw new Error(`Failed to start recording: ${startError.message}`);
-            }
-          } catch (error) {
-            console.error("Failed to start recording after countdown:", error);
-            setState((prev) => ({
-              ...prev,
-              error: "Failed to start recording. Please try again.",
-              isRecording: false,
-              isCountingDown: false,
-              countdown: 3,
-            }));
-          }
-        }, 3000);
-      } catch (error) {
-        console.error("Failed to start countdown:", error);
-        setState((prev) => ({
-          ...prev,
-          error: "Failed to start countdown. Please try again.",
-          isCountingDown: false,
-          countdown: 3,
-        }));
-      }
-    }, 100); // Small delay to ensure state updates
-  }, [streams.webcamStream, streams.screenStream, createCombinedStream]);
-
-  const startRecording = useCallback(async (): Promise<void> => {
-    if (!streams.screenStream || !streams.webcamStream) {
-      setState((prev) => ({ ...prev, error: "Missing required streams. Please request permissions first." }));
+    if (!streams.webcamStream || !streams.screenStream) {
+      console.error("Missing streams:", { webcamStream: !!streams.webcamStream, screenStream: !!streams.screenStream });
+      setState((prev) => ({ ...prev, error: "Camera or screen not available. Please allow permissions first." }));
       return;
     }
 
     try {
-      // Try screen-only recording first for better compatibility
+      // START RECORDING IMMEDIATELY to prevent screen share from being closed by browser
+      console.log("Starting recording immediately to maintain screen share...");
+
+      // Prepare the recording stream
       let recordingStream = streams.screenStream;
       let streamType = "screen-only";
 
@@ -586,8 +436,6 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         recordingStream = createCombinedStream(streams.screenStream, streams.webcamStream);
         streamType = "combined";
       }
-
-      setStreams((prev) => ({ ...prev, combinedStream: recordingStream }));
 
       console.log(`Using ${streamType} stream for recording:`, {
         video: recordingStream.getVideoTracks().length,
@@ -624,13 +472,18 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
       for (const option of options) {
         try {
+          console.log("Trying MediaRecorder with option:", option);
+
           if (option.mimeType && !MediaRecorder.isTypeSupported(option.mimeType)) {
+            console.log("MIME type not supported:", option.mimeType);
             continue;
           }
+
           mediaRecorder = new MediaRecorder(recordingStream, option);
-          console.log("MediaRecorder created with option:", option);
+          console.log("MediaRecorder created successfully with:", option);
           break;
         } catch (e) {
+          console.warn("Failed to create MediaRecorder with option:", option, e);
           lastError = e;
           continue;
         }
@@ -657,15 +510,20 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       }
 
       if (!mediaRecorder) {
-        throw new Error(`Failed to create MediaRecorder with any configuration: ${lastError?.message || "Unknown error"}`);
+        throw new Error(
+          `Failed to create MediaRecorder with any configuration: ${lastError instanceof Error ? lastError.message : "Unknown error"}`
+        );
       }
 
       recordedChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        console.log("Data available:", event.data.size);
+        console.log("Data available - size:", event.data.size, "type:", event.data.type);
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
+          console.log("Total chunks so far:", recordedChunksRef.current.length);
+        } else {
+          console.warn("Received empty data chunk");
         }
       };
 
@@ -675,34 +533,60 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
           ...prev,
           error: "Recording failed. Please try again.",
           isRecording: false,
+          isCountingDown: false,
         }));
       };
 
       mediaRecorder.onstart = () => {
-        console.log("Recording started");
+        console.log("MediaRecorder started - beginning countdown display");
         setState((prev) => ({
           ...prev,
           isRecording: true,
           recordingTime: 0,
           error: null,
+          isCountingDown: true,
+          countdown: 3,
         }));
 
-        // Start the timer
-        timerRef.current = window.setInterval(() => {
-          setState((prev) => ({
-            ...prev,
-            recordingTime: prev.recordingTime + 1,
-          }));
+        // Start the countdown timer for visual display
+        countdownTimerRef.current = window.setInterval(() => {
+          setState((prev) => {
+            const newCountdown = prev.countdown - 1;
+
+            if (newCountdown <= 0) {
+              if (countdownTimerRef.current) {
+                clearInterval(countdownTimerRef.current);
+                countdownTimerRef.current = null;
+              }
+              // Start the recording timer after countdown
+              timerRef.current = window.setInterval(() => {
+                setState((prevState) => ({
+                  ...prevState,
+                  recordingTime: prevState.recordingTime + 1,
+                }));
+              }, 1000);
+
+              return { ...prev, isCountingDown: false, countdown: 0 };
+            }
+
+            return { ...prev, countdown: newCountdown };
+          });
         }, 1000);
       };
 
       mediaRecorder.onstop = () => {
-        console.log("Recording stopped");
+        console.log("MediaRecorder stopped");
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
       };
+
+      console.log("Starting MediaRecorder immediately...");
 
       // Set MediaRecorder reference first
       mediaRecorderRef.current = mediaRecorder;
@@ -717,21 +601,29 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       }
 
       try {
-        // Start without time slice for better compatibility
-        mediaRecorder.start();
-        console.log("MediaRecorder started successfully, type:", mediaRecorder.mimeType);
+        // Start with time slice to ensure regular data capture
+        mediaRecorder.start(1000); // Capture data every 1 second
+        console.log("MediaRecorder started successfully with 1s time slice, mimeType:", mediaRecorder.mimeType);
       } catch (startError) {
         console.error("Failed to start MediaRecorder:", startError);
-        throw new Error(`Failed to start recording: ${startError.message}`);
+        throw new Error(`Failed to start recording: ${startError instanceof Error ? startError.message : "Unknown error"}`);
       }
     } catch (error) {
       console.error("Failed to start recording:", error);
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Failed to start recording",
+        error: "Failed to start recording. Please try again.",
+        isRecording: false,
+        isCountingDown: false,
+        countdown: 3,
       }));
     }
-  }, [streams.screenStream, streams.webcamStream, createCombinedStream]);
+  }, [streams.webcamStream, streams.screenStream, createCombinedStream]);
+
+  // Simple wrapper for startCountdownAndRecord
+  const startRecording = useCallback(async (): Promise<void> => {
+    await startCountdownAndRecord();
+  }, [startCountdownAndRecord]);
 
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     return new Promise((resolve) => {
@@ -746,6 +638,11 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       recorder.onstop = () => {
         console.log("Recording stopped, creating blob from", recordedChunksRef.current.length, "chunks");
 
+        // Log chunk details for debugging
+        recordedChunksRef.current.forEach((chunk, index) => {
+          console.log(`Chunk ${index}: size=${chunk.size}, type=${chunk.type}`);
+        });
+
         if (recordedChunksRef.current.length === 0) {
           console.warn("No recorded chunks available");
           resolve(null);
@@ -754,15 +651,35 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
         // Use the mimeType from the recorder if available
         const mimeType = recorder.mimeType || "video/webm";
+        console.log("Creating blob with mimeType:", mimeType);
+
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
 
         console.log("Created blob:", blob.size, "bytes, type:", blob.type);
+
+        // Validate the blob
+        if (blob.size === 0) {
+          console.error("Created blob is empty!");
+          resolve(null);
+          return;
+        }
 
         setState((prev) => ({ ...prev, isRecording: false }));
         resolve(blob);
       };
 
       console.log("Stopping recording...");
+
+      // Request any final data before stopping
+      if (recorder.state === "recording") {
+        try {
+          recorder.requestData();
+          console.log("Requested final data from MediaRecorder");
+        } catch (e) {
+          console.warn("Could not request final data:", e);
+        }
+      }
+
       recorder.stop();
 
       // Stop timer
