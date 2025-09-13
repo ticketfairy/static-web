@@ -1,5 +1,27 @@
-import { Box, Button, VStack, Heading, useColorModeValue, Icon, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Input, useToast, Text, SimpleGrid, Flex, Textarea } from "@chakra-ui/react";
-import { FiVideo, FiUpload, FiCamera, FiArrowLeft } from "react-icons/fi";
+import {
+  Box,
+  Button,
+  VStack,
+  Heading,
+  useColorModeValue,
+  Icon,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  Input,
+  useToast,
+  Text,
+  SimpleGrid,
+  Flex,
+  Textarea,
+  Progress,
+  Alert,
+  AlertIcon,
+} from "@chakra-ui/react";
+import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud } from "react-icons/fi";
 import { useState, useRef } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import { RecordingModal } from "./RecordingModal";
@@ -12,6 +34,7 @@ import { PermissionsPopup } from "./PermissionsPopup";
 import { ReadyToRecordModal } from "./ReadyToRecordModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
+import { useS3Upload } from "../hooks/useS3Upload";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -21,20 +44,9 @@ interface VideoPageProps {
 function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLanding }: VideoPageProps) {
   const bgColor = useColorModeValue("white", "gray.900");
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const {
-    isOpen: isRecordingModalOpen,
-    onOpen: onRecordingModalOpen,
-    onClose: onRecordingModalClose
-  } = useDisclosure();
-  const {
-    isOpen: isVideoPreviewOpen,
-    onClose: onVideoPreviewClose
-  } = useDisclosure();
-  const {
-    isOpen: isTicketModalOpen,
-    onOpen: onTicketModalOpen,
-    onClose: onTicketModalClose
-  } = useDisclosure();
+  const { isOpen: isRecordingModalOpen, onOpen: onRecordingModalOpen, onClose: onRecordingModalClose } = useDisclosure();
+  const { isOpen: isVideoPreviewOpen, onClose: onVideoPreviewClose } = useDisclosure();
+  const { isOpen: isTicketModalOpen, onOpen: onTicketModalOpen, onClose: onTicketModalClose } = useDisclosure();
 
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
 
@@ -49,6 +61,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     notes: string;
     blob?: Blob;
     createdAt: Date;
+    s3Url?: string;
+    s3Key?: string;
+    isUploading?: boolean;
+    uploadProgress?: number;
   }
 
   const [videos, setVideos] = useState<VideoItem[]>([
@@ -60,7 +76,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       thumbnailColor: "purple.100",
       thumbnailIconColor: "purple.500",
       notes: "",
-      createdAt: new Date(Date.now() - 86400000) // 1 day ago
+      createdAt: new Date(Date.now() - 86400000), // 1 day ago
     },
     {
       id: "sample-2",
@@ -70,7 +86,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       thumbnailColor: "blue.100",
       thumbnailIconColor: "blue.500",
       notes: "",
-      createdAt: new Date(Date.now() - 172800000) // 2 days ago
+      createdAt: new Date(Date.now() - 172800000), // 2 days ago
     },
     {
       id: "sample-3",
@@ -80,19 +96,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       thumbnailColor: "green.100",
       thumbnailIconColor: "green.500",
       notes: "",
-      createdAt: new Date(Date.now() - 259200000) // 3 days ago
-    }
+      createdAt: new Date(Date.now() - 259200000), // 3 days ago
+    },
   ]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
   const { saveToVideos } = useSaveToVideos();
+  const { uploadVideo, isConfigured: isS3Configured } = useS3Upload();
 
   // Helper function to generate video duration from blob
   const getVideoDuration = (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
-      const video = document.createElement('video');
+      const video = document.createElement("video");
       const url = URL.createObjectURL(blob);
       video.src = url;
       video.onloadedmetadata = () => {
@@ -100,7 +117,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         const minutes = Math.floor(duration / 60);
         const seconds = Math.floor(duration % 60);
         URL.revokeObjectURL(url);
-        resolve(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        resolve(`${minutes}:${seconds.toString().padStart(2, "0")}`);
       };
       // Fallback if metadata doesn't load
       setTimeout(() => {
@@ -110,13 +127,74 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     });
   };
 
+  // Helper function to upload video to S3
+  const uploadVideoToS3 = async (blob: Blob, videoId: string, filename?: string) => {
+    if (!isS3Configured) {
+      console.warn("S3 not configured, skipping upload");
+      return;
+    }
+
+    // Set uploading state for this video
+    setVideos((prev) => prev.map((video) => (video.id === videoId ? { ...video, isUploading: true, uploadProgress: 0 } : video)));
+
+    try {
+      const result = await uploadVideo(blob, filename);
+
+      if (result.success) {
+        // Update video with S3 information
+        setVideos((prev) =>
+          prev.map((video) =>
+            video.id === videoId
+              ? {
+                  ...video,
+                  s3Url: result.url,
+                  s3Key: result.key,
+                  isUploading: false,
+                  uploadProgress: 100,
+                }
+              : video
+          )
+        );
+
+        toast({
+          title: "Video Uploaded to Cloud!",
+          description: "Your video has been successfully uploaded to S3",
+          status: "success",
+          duration: 4000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error(result.error || "Upload failed");
+      }
+    } catch (error) {
+      console.error("S3 upload failed:", error);
+
+      // Reset uploading state
+      setVideos((prev) => prev.map((video) => (video.id === videoId ? { ...video, isUploading: false, uploadProgress: 0 } : video)));
+
+      toast({
+        title: "Cloud Upload Failed",
+        description: `Failed to upload video to S3: ${error instanceof Error ? error.message : "Unknown error"}`,
+        status: "error",
+        duration: 6000,
+        isClosable: true,
+      });
+    }
+  };
+
   // Helper function to add new video to collection
   const addVideoToCollection = async (blob: Blob, title?: string) => {
     const duration = await getVideoDuration(blob);
     const timestamp = new Date();
 
     // Format timestamp as requested: "MM/DD/YYYY HH:MM:SS"
-    const formattedTimestamp = `${(timestamp.getMonth() + 1).toString().padStart(2, '0')}/${timestamp.getDate().toString().padStart(2, '0')}/${timestamp.getFullYear()} ${timestamp.getHours().toString().padStart(2, '0')}:${timestamp.getMinutes().toString().padStart(2, '0')}:${timestamp.getSeconds().toString().padStart(2, '0')}`;
+    const formattedTimestamp = `${(timestamp.getMonth() + 1).toString().padStart(2, "0")}/${timestamp
+      .getDate()
+      .toString()
+      .padStart(2, "0")}/${timestamp.getFullYear()} ${timestamp.getHours().toString().padStart(2, "0")}:${timestamp
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}:${timestamp.getSeconds().toString().padStart(2, "0")}`;
 
     const newVideo: VideoItem = {
       id: `video-${timestamp.getTime()}`,
@@ -127,20 +205,28 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       thumbnailIconColor: "purple.500",
       notes: "",
       blob,
-      createdAt: timestamp
+      createdAt: timestamp,
+      isUploading: false,
+      uploadProgress: 0,
     };
 
     // Add to the beginning of the videos array (most recent first)
-    setVideos(prev => [newVideo, ...prev]);
+    setVideos((prev) => [newVideo, ...prev]);
+
+    // Automatically upload to S3 if configured
+    if (isS3Configured) {
+      // Use setTimeout to ensure the video is added to state first
+      setTimeout(() => {
+        uploadVideoToS3(blob, newVideo.id, title);
+      }, 100);
+    }
 
     return newVideo;
   };
 
   // Helper function to update video notes
   const updateVideoNotes = (videoId: string, notes: string) => {
-    setVideos(prev => prev.map(video =>
-      video.id === videoId ? { ...video, notes } : video
-    ));
+    setVideos((prev) => prev.map((video) => (video.id === videoId ? { ...video, notes } : video)));
   };
 
   const {
@@ -153,13 +239,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     startCountdownAndRecord,
     cleanup,
     hidePermissionsPopup,
-    requestScreenAndStart
+    requestScreenAndStart,
   } = useScreenRecording();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      console.log('File selected:', file.name);
+    if (file && file.type.startsWith("video/")) {
+      console.log("File selected:", file.name);
 
       // Show processing toast
       toast({
@@ -194,7 +280,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           duration: 5000,
           isClosable: true,
         });
-        console.error('Failed to process uploaded video:', error);
+        console.error("Failed to process uploaded video:", error);
       }
     }
   };
@@ -210,7 +296,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     if (!browserSupport.isSupported) {
       toast({
         title: "Browser Not Supported",
-        description: `Your browser is missing: ${browserSupport.missingFeatures.join(', ')}. Please use Chrome or a Chromium-based browser.`,
+        description: `Your browser is missing: ${browserSupport.missingFeatures.join(
+          ", "
+        )}. Please use Chrome or a Chromium-based browser.`,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -243,7 +331,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       const recordingBlob = await stopRecording();
 
       if (recordingBlob) {
-        console.log('Recording blob received:', recordingBlob.size, 'bytes');
+        console.log("Recording blob received:", recordingBlob.size, "bytes");
         setRecordedVideo(recordingBlob);
 
         // Auto-save to video collection
@@ -286,7 +374,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         duration: 5000,
         isClosable: true,
       });
-      console.error('Failed to process recording:', error);
+      console.error("Failed to process recording:", error);
     }
   };
 
@@ -299,7 +387,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     const filename = generateRecordingFilename();
     await saveToVideos(blob, filename);
   };
-
 
   const handleConvertToTicket = () => {
     onVideoPreviewClose();
@@ -314,7 +401,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   };
 
   const handleSaveTicket = (ticketData: any) => {
-    console.log('Saving ticket:', ticketData);
+    console.log("Saving ticket:", ticketData);
     toast({
       title: "Ticket Saved",
       description: "Your AI-generated ticket has been saved to your project!",
@@ -329,11 +416,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       {/* Back Button */}
       {onNavigateToLanding && (
         <Box p={4}>
-          <Button
-            leftIcon={<Icon as={FiArrowLeft} />}
-            variant="ghost"
-            onClick={onNavigateToLanding}
-          >
+          <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
             Back to Home
           </Button>
         </Box>
@@ -341,7 +424,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
       {/* Video Page Content */}
       <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto">
-
         {!streams.webcamStream ? (
           <Button
             colorScheme="purple"
@@ -351,8 +433,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
             fontSize="2xl"
             fontWeight="bold"
             rightIcon={<Icon as={FiVideo} w={8} h={8} />}
-            onClick={onOpen}
-          >
+            onClick={onOpen}>
             Create Video
           </Button>
         ) : (
@@ -371,8 +452,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               rightIcon={<Icon as={state.isRecording ? FiVideo : FiCamera} w={8} h={8} />}
               onClick={state.isRecording ? handleStopRecording : () => startCountdownAndRecord()}
               isLoading={state.isCountingDown || state.isPreparing}
-              loadingText={state.isCountingDown ? `Starting in ${state.countdown}...` : "Preparing..."}
-            >
+              loadingText={state.isCountingDown ? `Starting in ${state.countdown}...` : "Preparing..."}>
               {state.isRecording ? "Stop Recording" : "Record"}
             </Button>
 
@@ -384,11 +464,23 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           </VStack>
         )}
 
+        {/* S3 Configuration Status */}
+        {!isS3Configured && (
+          <Alert status="warning" borderRadius="md" maxW="600px">
+            <AlertIcon />
+            <Text>AWS S3 not configured. Videos will only be saved locally. Set up AWS credentials to enable cloud storage.</Text>
+          </Alert>
+        )}
+
         {/* Sample Videos Section */}
         <Box w="full" pt={16}>
           <VStack spacing={8}>
             <Heading fontSize="2xl" textAlign="center">
-              🦷 My <Text as="span" textDecoration="line-through">Teeth</Text> Tickets 🦷
+              🦷 My{" "}
+              <Text as="span" textDecoration="line-through">
+                Teeth
+              </Text>{" "}
+              Tickets 🦷
             </Heading>
 
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} w="full">
@@ -402,8 +494,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       display="flex"
                       alignItems="center"
                       justifyContent="center"
-                      position="relative"
-                    >
+                      position="relative">
                       <Icon as={FiVideo} w={12} h={12} color={video.thumbnailIconColor} />
                       <Text
                         position="absolute"
@@ -414,8 +505,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         px={2}
                         py={1}
                         borderRadius="sm"
-                        fontSize="xs"
-                      >
+                        fontSize="xs">
                         {video.duration}
                       </Text>
                       {video.blob && (
@@ -428,9 +518,23 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           px={1}
                           py={0.5}
                           borderRadius="sm"
-                          fontSize="xs"
-                        >
+                          fontSize="xs">
                           NEW
+                        </Text>
+                      )}
+                      {video.s3Url && <Icon as={FiCloud} position="absolute" top={2} left={2} color="blue.500" w={4} h={4} />}
+                      {video.isUploading && (
+                        <Text
+                          position="absolute"
+                          top={2}
+                          left={2}
+                          bg="blue.500"
+                          color="white"
+                          px={1}
+                          py={0.5}
+                          borderRadius="sm"
+                          fontSize="xs">
+                          ☁️ Uploading...
                         </Text>
                       )}
                     </Box>
@@ -442,6 +546,19 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       <Text color="gray.600" fontSize="sm" textAlign="left">
                         {video.description}
                       </Text>
+                      {video.isUploading && (
+                        <Box w="full">
+                          <Text fontSize="xs" color="blue.600" mb={1}>
+                            Uploading to cloud storage...
+                          </Text>
+                          <Progress value={video.uploadProgress || 0} size="sm" colorScheme="blue" borderRadius="md" />
+                        </Box>
+                      )}
+                      {video.s3Url && !video.isUploading && (
+                        <Text fontSize="xs" color="blue.600">
+                          ☁️ Stored in cloud
+                        </Text>
+                      )}
                     </VStack>
 
                     <Textarea
@@ -463,31 +580,34 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         variant="ghost"
                         flex={1}
                         onClick={() => {
-                          // TODO: Replace with actual backend URL when connected
-                          const shareableLink = video.blob
-                            ? `https://ticketfairy.app/video/${video.id}`
-                            : "Link not available";
+                          // Use S3 URL if available, otherwise fallback to placeholder
+                          const shareableLink =
+                            video.s3Url || (video.blob ? `https://ticketfairy.app/video/${video.id}` : "Link not available");
 
-                          navigator.clipboard.writeText(shareableLink).then(() => {
-                            toast({
-                              title: "Link Copied!",
-                              description: "Video link has been copied to clipboard",
-                              status: "success",
-                              duration: 2000,
-                              isClosable: true,
+                          navigator.clipboard
+                            .writeText(shareableLink)
+                            .then(() => {
+                              toast({
+                                title: "Link Copied!",
+                                description: video.s3Url
+                                  ? "S3 video link has been copied to clipboard"
+                                  : "Video link has been copied to clipboard",
+                                status: "success",
+                                duration: 2000,
+                                isClosable: true,
+                              });
+                            })
+                            .catch(() => {
+                              toast({
+                                title: "Copy Failed",
+                                description: "Could not copy link to clipboard",
+                                status: "error",
+                                duration: 3000,
+                                isClosable: true,
+                              });
                             });
-                          }).catch(() => {
-                            toast({
-                              title: "Copy Failed",
-                              description: "Could not copy link to clipboard",
-                              status: "error",
-                              duration: 3000,
-                              isClosable: true,
-                            });
-                          });
                         }}
-                        isDisabled={!video.blob}
-                      >
+                        isDisabled={!video.blob && !video.s3Url}>
                         Get Link
                       </Button>
                     </Flex>
@@ -520,8 +640,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 onClick={handleUploadClick}
                 display="flex"
                 flexDirection="column"
-                gap={3}
-              >
+                gap={3}>
                 <Icon as={FiUpload} w={8} h={8} />
                 Upload
               </Button>
@@ -537,8 +656,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 loadingText="Starting..."
                 display="flex"
                 flexDirection="column"
-                gap={3}
-              >
+                gap={3}>
                 <Icon as={FiCamera} w={8} h={8} />
                 Record
               </Button>
@@ -548,13 +666,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       </Modal>
 
       {/* Hidden file input */}
-      <Input
-        type="file"
-        accept="video/*"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        display="none"
-      />
+      <Input type="file" accept="video/*" ref={fileInputRef} onChange={handleFileSelect} display="none" />
 
       {/* Recording Modal */}
       <RecordingModal
@@ -567,11 +679,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       />
 
       {/* Floating Recording Controls */}
-      <FloatingRecordingControls
-        isRecording={state.isRecording}
-        recordingTime={state.recordingTime}
-        onStop={handleStopRecording}
-      />
+      <FloatingRecordingControls isRecording={state.isRecording} recordingTime={state.recordingTime} onStop={handleStopRecording} />
 
       {/* Draggable Webcam Overlay */}
       <DraggableWebcamOverlay
@@ -584,10 +692,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       />
 
       {/* Recording Indicator */}
-      <RecordingIndicator
-        isRecording={state.isRecording}
-        recordingTime={state.recordingTime}
-      />
+      <RecordingIndicator isRecording={state.isRecording} recordingTime={state.recordingTime} />
 
       {/* Video Preview Modal */}
       <VideoPreviewModal
@@ -618,7 +723,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       />
 
       {/* Ready to Record Modal */}
-      {console.log('VideoPage render - showReadyModal:', state.showReadyModal)}
       <ReadyToRecordModal
         isOpen={state.showReadyModal}
         onClose={() => {
