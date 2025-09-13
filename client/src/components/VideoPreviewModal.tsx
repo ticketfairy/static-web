@@ -16,7 +16,7 @@ import {
   Divider,
   useToast
 } from "@chakra-ui/react";
-import { FiSave, FiPlay, FiPause, FiDownload, FiRefreshCw, FiZap } from "react-icons/fi";
+import { FiSave, FiPlay, FiPause, FiRefreshCw, FiZap } from "react-icons/fi";
 import { useState, useRef, useEffect } from "react";
 
 interface VideoPreviewModalProps {
@@ -24,7 +24,6 @@ interface VideoPreviewModalProps {
   onClose: () => void;
   videoBlob: Blob | null;
   onSaveToVideos: (blob: Blob) => Promise<void>;
-  onDownload: (blob: Blob) => void;
   onConvertToTicket: (blob: Blob) => void;
   onRetake: () => void;
 }
@@ -34,7 +33,6 @@ export function VideoPreviewModal({
   onClose,
   videoBlob,
   onSaveToVideos,
-  onDownload,
   onConvertToTicket,
   onRetake
 }: VideoPreviewModalProps) {
@@ -121,17 +119,6 @@ export function VideoPreviewModal({
     }
   };
 
-  const handleDownload = () => {
-    if (!videoBlob) return;
-    onDownload(videoBlob);
-    toast({
-      title: "Video Downloaded",
-      description: "Your recording has been downloaded to your Downloads folder!",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-  };
 
   const handleConvertToTicket = () => {
     if (!videoBlob) return;
@@ -230,43 +217,8 @@ export function VideoPreviewModal({
 
             {/* Action Buttons */}
             <VStack w="full" spacing={4}>
-              {/* Save Options */}
+              {/* AI Processing - Moved to top */}
               <VStack w="full" spacing={3}>
-                <Text fontWeight="semibold" color="gray.600">
-                  Save Your Recording
-                </Text>
-
-                <HStack w="full" spacing={3}>
-                  <Button
-                    flex={1}
-                    leftIcon={<Icon as={FiSave} />}
-                    colorScheme="blue"
-                    onClick={handleSaveToVideos}
-                    isLoading={isSaving}
-                    loadingText="Saving..."
-                  >
-                    Save to Videos
-                  </Button>
-
-                  <Button
-                    flex={1}
-                    leftIcon={<Icon as={FiDownload} />}
-                    variant="outline"
-                    onClick={handleDownload}
-                  >
-                    Download
-                  </Button>
-                </HStack>
-              </VStack>
-
-              <Divider />
-
-              {/* AI Processing */}
-              <VStack w="full" spacing={3}>
-                <Text fontWeight="semibold" color="gray.600">
-                  Convert to Ticket
-                </Text>
-
                 <Button
                   w="full"
                   leftIcon={<Icon as={FiZap} />}
@@ -285,21 +237,35 @@ export function VideoPreviewModal({
 
               <Divider />
 
-              {/* Other Options */}
-              <HStack w="full" spacing={3}>
-                <Button
-                  flex={1}
-                  leftIcon={<Icon as={FiRefreshCw} />}
-                  variant="ghost"
-                  onClick={onRetake}
-                >
-                  Record Again
-                </Button>
+              {/* Save Options - Removed Download button */}
+              <VStack w="full" spacing={3}>
+                <Text fontWeight="semibold" color="gray.600">
+                  Save Your Recording
+                </Text>
 
-                <Button flex={1} variant="ghost" onClick={onClose}>
-                  Close
+                <Button
+                  w="full"
+                  leftIcon={<Icon as={FiSave} />}
+                  colorScheme="blue"
+                  onClick={handleSaveToVideos}
+                  isLoading={isSaving}
+                  loadingText="Saving..."
+                >
+                  Save to Videos
                 </Button>
-              </HStack>
+              </VStack>
+
+              <Divider />
+
+              {/* Other Options - Removed Close button */}
+              <Button
+                w="full"
+                leftIcon={<Icon as={FiRefreshCw} />}
+                variant="ghost"
+                onClick={onRetake}
+              >
+                Record Again
+              </Button>
             </VStack>
           </VStack>
         </ModalBody>

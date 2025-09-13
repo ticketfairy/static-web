@@ -8,6 +8,8 @@ export interface RecordingState {
   recordingTime: number;
   countdown: number;
   isCountingDown: boolean;
+  showPermissionsPopup: boolean;
+  showReadyModal: boolean;
 }
 
 export interface MediaStreams {
@@ -25,6 +27,9 @@ export interface UseScreenRecordingReturn {
   requestWebcamOnly: () => Promise<boolean>;
   startCountdownAndRecord: () => Promise<void>;
   cleanup: () => void;
+  showPermissionsPopup: () => void;
+  hidePermissionsPopup: () => void;
+  requestScreenAndStart: () => Promise<void>;
 }
 
 export const useScreenRecording = (): UseScreenRecordingReturn => {
@@ -36,6 +41,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
     recordingTime: 0,
     countdown: 3,
     isCountingDown: false,
+    showPermissionsPopup: false,
+    showReadyModal: false,
   });
 
   const [streams, setStreams] = useState<MediaStreams>({
@@ -85,6 +92,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       recordingTime: 0,
       countdown: 3,
       isCountingDown: false,
+      showPermissionsPopup: false,
+      showReadyModal: false,
     }));
   }, [streams]);
 
@@ -181,6 +190,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         ...prev,
         isPreparing: false,
         error: null,
+        hasPermissions: true, // Set hasPermissions to true so webcam circle shows
+        showPermissionsPopup: true, // Show permissions popup after webcam is ready
       }));
 
       return true;
@@ -207,85 +218,6 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
     }
   }, []);
 
-  const startCountdownAndRecord = useCallback(async (): Promise<void> => {
-    if (!streams.webcamStream) {
-      setState(prev => ({ ...prev, error: 'Camera not available. Please allow camera access first.' }));
-      return;
-    }
-
-    // Start countdown
-    setState(prev => ({ ...prev, isCountingDown: true, countdown: 3 }));
-
-    countdownTimerRef.current = window.setInterval(() => {
-      setState(prev => {
-        const newCountdown = prev.countdown - 1;
-
-        if (newCountdown <= 0) {
-          if (countdownTimerRef.current) {
-            clearInterval(countdownTimerRef.current);
-            countdownTimerRef.current = null;
-          }
-          return { ...prev, isCountingDown: false, countdown: 0 };
-        }
-
-        return { ...prev, countdown: newCountdown };
-      });
-    }, 1000);
-
-    // Wait for countdown to finish, then request screen and start recording
-    setTimeout(async () => {
-      try {
-        // Request screen permission
-        setState(prev => ({ ...prev, isPreparing: true }));
-
-        if (!navigator.mediaDevices?.getDisplayMedia) {
-          throw new Error('Screen recording is not supported in this browser.');
-        }
-
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            frameRate: { ideal: 30 }
-          },
-          audio: true
-        });
-
-        setStreams(prev => ({
-          ...prev,
-          screenStream,
-        }));
-
-        setState(prev => ({
-          ...prev,
-          hasPermissions: true,
-          isPreparing: false,
-        }));
-
-        // Start recording
-        await startRecording();
-      } catch (error) {
-        let errorMessage = 'Failed to get screen recording permissions.';
-
-        if (error instanceof Error) {
-          if (error.name === 'NotAllowedError') {
-            errorMessage = 'Screen sharing permission was denied.';
-          } else {
-            errorMessage = error.message;
-          }
-        }
-
-        setState(prev => ({
-          ...prev,
-          error: errorMessage,
-          isPreparing: false,
-          isCountingDown: false,
-          countdown: 3,
-        }));
-      }
-    }, 3000);
-  }, [streams.webcamStream]);
-
   const createCombinedStream = useCallback((screenStream: MediaStream, webcamStream: MediaStream): MediaStream => {
     // For now, let's simplify and just use the screen stream with audio from both sources
     // We'll handle the webcam overlay separately in the UI
@@ -307,6 +239,234 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
     return combinedStream;
   }, []);
+
+  const showPermissionsPopup = useCallback(() => {
+    setState(prev => ({ ...prev, showPermissionsPopup: true }));
+  }, []);
+
+  const hidePermissionsPopup = useCallback(() => {
+    setState(prev => ({ ...prev, showPermissionsPopup: false }));
+  }, []);
+
+  const requestScreenAndStart = useCallback(async (): Promise<void> => {
+    console.log('requestScreenAndStart called');
+    
+    if (!streams.webcamStream) {
+      console.error('No webcam stream available');
+      setState(prev => ({ ...prev, error: 'Camera not available. Please allow camera access first.' }));
+      return;
+    }
+
+    try {
+      console.log('Hiding permissions popup and requesting screen permission...');
+      // Hide permissions popup first
+      setState(prev => ({ ...prev, showPermissionsPopup: false, isPreparing: true }));
+
+      // Request screen permission immediately
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        throw new Error('Screen recording is not supported in this browser.');
+      }
+
+      console.log('Calling getDisplayMedia...');
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: true
+      });
+
+      console.log('Screen stream obtained:', !!screenStream);
+      setStreams(prev => {
+        console.log('Setting screen stream:', !!screenStream);
+        return {
+          ...prev,
+          screenStream,
+        };
+      });
+
+      console.log('Showing ready modal...');
+      setState(prev => ({
+        ...prev,
+        isPreparing: false,
+        showReadyModal: true // Now show ready modal after screen permission granted
+      }));
+    } catch (error) {
+      let errorMessage = 'Failed to get screen recording permissions.';
+
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Screen sharing permission was denied.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+        isPreparing: false,
+        showPermissionsPopup: false,
+        showReadyModal: false,
+      }));
+
+      // If screen permission was denied, clean up and reset to initial state
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        // Clean up webcam stream to return to initial state
+        if (streams.webcamStream) {
+          streams.webcamStream.getTracks().forEach(track => track.stop());
+        }
+        setStreams(prev => ({
+          ...prev,
+          webcamStream: null,
+        }));
+      }
+    }
+  }, [streams.webcamStream]);
+
+  const startCountdownAndRecord = useCallback(async (): Promise<void> => {
+    console.log('startCountdownAndRecord called with streams:', {
+      webcamStream: !!streams.webcamStream,
+      screenStream: !!streams.screenStream
+    });
+    
+    // Hide ready modal first
+    setState(prev => ({ ...prev, showReadyModal: false }));
+
+    // Add a small delay to ensure state updates have been applied
+    setTimeout(() => {
+      console.log('After timeout, streams:', {
+        webcamStream: !!streams.webcamStream,
+        screenStream: !!streams.screenStream
+      });
+      
+      if (!streams.webcamStream || !streams.screenStream) {
+        console.error('Missing streams after timeout:', { webcamStream: !!streams.webcamStream, screenStream: !!streams.screenStream });
+        setState(prev => ({ ...prev, error: 'Camera or screen not available. Please allow permissions first.' }));
+        return;
+      }
+
+      try {
+        // NOW start countdown after permissions are granted
+        setState(prev => ({ ...prev, isCountingDown: true, countdown: 3 }));
+
+        countdownTimerRef.current = window.setInterval(() => {
+          setState(prev => {
+            const newCountdown = prev.countdown - 1;
+
+            if (newCountdown <= 0) {
+              if (countdownTimerRef.current) {
+                clearInterval(countdownTimerRef.current);
+                countdownTimerRef.current = null;
+              }
+              return { ...prev, isCountingDown: false, countdown: 0 };
+            }
+
+            return { ...prev, countdown: newCountdown };
+          });
+        }, 1000);
+
+        // Wait for countdown to finish, then start recording
+        setTimeout(async () => {
+          try {
+            // Start recording now that we have both streams
+            const { webcamStream, screenStream } = streams;
+            if (!screenStream || !webcamStream) {
+              throw new Error('Missing required streams for recording');
+            }
+
+            const combinedStream = createCombinedStream(screenStream, webcamStream);
+
+            // Set up MediaRecorder with the combined stream
+            const options = [
+              { mimeType: 'video/webm;codecs=vp9,opus' },
+              { mimeType: 'video/webm;codecs=vp8,opus' },
+              { mimeType: 'video/webm' },
+              { mimeType: 'video/mp4' }
+            ];
+
+            let mediaRecorder = null;
+            for (const option of options) {
+              if (MediaRecorder.isTypeSupported(option.mimeType)) {
+                try {
+                  mediaRecorder = new MediaRecorder(combinedStream, option);
+                  break;
+                } catch (e) {
+                  continue;
+                }
+              }
+            }
+
+            if (!mediaRecorder) {
+              mediaRecorder = new MediaRecorder(combinedStream);
+            }
+
+            recordedChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                recordedChunksRef.current.push(event.data);
+              }
+            };
+
+            mediaRecorder.onerror = (event) => {
+              console.error('MediaRecorder error:', event);
+              setState(prev => ({
+                ...prev,
+                error: 'Recording failed. Please try again.',
+                isRecording: false,
+              }));
+            };
+
+            mediaRecorder.onstart = () => {
+              setState(prev => ({
+                ...prev,
+                isRecording: true,
+                recordingTime: 0,
+                error: null,
+              }));
+
+              // Start the timer
+              timerRef.current = window.setInterval(() => {
+                setState(prev => ({
+                  ...prev,
+                  recordingTime: prev.recordingTime + 1,
+                }));
+              }, 1000);
+            };
+
+            mediaRecorder.onstop = () => {
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+            };
+
+            mediaRecorder.start(1000);
+            mediaRecorderRef.current = mediaRecorder;
+          } catch (error) {
+            console.error('Failed to start recording after countdown:', error);
+            setState(prev => ({
+              ...prev,
+              error: 'Failed to start recording. Please try again.',
+              isRecording: false,
+              isCountingDown: false,
+              countdown: 3,
+            }));
+          }
+        }, 3000);
+      } catch (error) {
+        console.error('Failed to start countdown:', error);
+        setState(prev => ({
+          ...prev,
+          error: 'Failed to start countdown. Please try again.',
+          isCountingDown: false,
+          countdown: 3,
+        }));
+      }
+    }, 100); // Small delay to ensure state updates
+  }, [streams.webcamStream, streams.screenStream, createCombinedStream]);
 
   const startRecording = useCallback(async (): Promise<void> => {
     if (!streams.screenStream || !streams.webcamStream) {
@@ -450,5 +610,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
     requestWebcamOnly,
     startCountdownAndRecord,
     cleanup,
+    showPermissionsPopup,
+    hidePermissionsPopup,
+    requestScreenAndStart,
   };
 };

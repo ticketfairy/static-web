@@ -22,8 +22,7 @@ export function DraggableWebcamOverlay({
   size = 150,
   isRecording = false,
   isCountingDown = false,
-  countdown = 3,
-  onStop
+  countdown = 3
 }: DraggableWebcamOverlayProps) {
   const [position, setPosition] = useState<Position>({
     x: window.innerWidth - size - 20,

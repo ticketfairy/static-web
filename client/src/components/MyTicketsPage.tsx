@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Textarea } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Textarea, AspectRatio } from "@chakra-ui/react";
 import { FiVideo } from "react-icons/fi";
 import { useState } from "react";
 
@@ -25,46 +25,47 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
       </Flex>
 
       {/* My Teeth Tickets Section */}
-      <Box w="full" py={16}>
+      <Box w="full" py={{ base: 8, md: 16 }}>
         <VStack spacing={8} px={4} maxW="1200px" mx="auto">
-          <Heading fontSize="2xl" textAlign="center">
+          <Heading fontSize={{ base: "xl", md: "2xl" }} textAlign="center">
             🦷 My <Text as="span" textDecoration="line-through">Teeth</Text> Tickets 🦷
           </Heading>
 
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} w="full">
+          <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={{ base: 4, md: 6 }} w="full">
             {/* Video 1: Fix Login Bug */}
-            <Box p={6} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
+            <Box p={{ base: 4, md: 6 }} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
               <VStack spacing={4} align="stretch">
-                <Box
-                  h="150px"
-                  bg="purple.100"
-                  borderRadius="md"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  position="relative"
-                >
-                  <Icon as={FiVideo} w={12} h={12} color="purple.500" />
-                  <Text
-                    position="absolute"
-                    bottom={2}
-                    right={2}
-                    bg="blackAlpha.700"
-                    color="white"
-                    px={2}
-                    py={1}
-                    borderRadius="sm"
-                    fontSize="xs"
+                <AspectRatio ratio={16 / 9}>
+                  <Box
+                    bg="purple.100"
+                    borderRadius="md"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    position="relative"
                   >
-                    2:34
-                  </Text>
-                </Box>
+                    <Icon as={FiVideo} w={{ base: 10, md: 12 }} h={{ base: 10, md: 12 }} color="purple.500" />
+                    <Text
+                      position="absolute"
+                      bottom={2}
+                      right={2}
+                      bg="blackAlpha.700"
+                      color="white"
+                      px={2}
+                      py={1}
+                      borderRadius="sm"
+                      fontSize="xs"
+                    >
+                      2:34
+                    </Text>
+                  </Box>
+                </AspectRatio>
 
                 <VStack spacing={2} align="start">
-                  <Text fontWeight="bold" fontSize="lg" textAlign="left">
+                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="left">
                     Fix Login Bug
                   </Text>
-                  <Text color={textColor} fontSize="sm" textAlign="left">
+                  <Text color={textColor} fontSize={{ base: "xs", md: "sm" }} textAlign="left">
                     Screen recording showing authentication issue reproduction and debugging steps
                   </Text>
                 </VStack>
@@ -74,58 +75,60 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
                   value={video1Notes}
                   onChange={(e) => setVideo1Notes(e.target.value)}
                   resize="vertical"
-                  minH="100px"
+                  minH={{ base: "80px", md: "100px" }}
                   bg="gray.50"
+                  fontSize={{ base: "sm", md: "md" }}
                 />
 
                 <Flex gap={2}>
-                  <Button size="sm" colorScheme="purple" variant="outline" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="outline" flex={1}>
                     Play
                   </Button>
-                  <Button size="sm" colorScheme="purple" variant="ghost" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="ghost" flex={1}>
                     Download
                   </Button>
                 </Flex>
 
-                <Button size="sm" colorScheme="purple" variant="solid" w="full">
+                <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="solid" w="full">
                   ✨ 🧚 TICKET ✨
                 </Button>
               </VStack>
             </Box>
 
             {/* Video 2: New Dashboard Feature */}
-            <Box p={6} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
+            <Box p={{ base: 4, md: 6 }} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
               <VStack spacing={4} align="stretch">
-                <Box
-                  h="150px"
-                  bg="blue.100"
-                  borderRadius="md"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  position="relative"
-                >
-                  <Icon as={FiVideo} w={12} h={12} color="blue.500" />
-                  <Text
-                    position="absolute"
-                    bottom={2}
-                    right={2}
-                    bg="blackAlpha.700"
-                    color="white"
-                    px={2}
-                    py={1}
-                    borderRadius="sm"
-                    fontSize="xs"
+                <AspectRatio ratio={16 / 9}>
+                  <Box
+                    bg="blue.100"
+                    borderRadius="md"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    position="relative"
                   >
-                    4:12
-                  </Text>
-                </Box>
+                    <Icon as={FiVideo} w={{ base: 10, md: 12 }} h={{ base: 10, md: 12 }} color="blue.500" />
+                    <Text
+                      position="absolute"
+                      bottom={2}
+                      right={2}
+                      bg="blackAlpha.700"
+                      color="white"
+                      px={2}
+                      py={1}
+                      borderRadius="sm"
+                      fontSize="xs"
+                    >
+                      4:12
+                    </Text>
+                  </Box>
+                </AspectRatio>
 
                 <VStack spacing={2} align="start">
-                  <Text fontWeight="bold" fontSize="lg" textAlign="left">
+                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="left">
                     New Dashboard Feature
                   </Text>
-                  <Text color={textColor} fontSize="sm" textAlign="left">
+                  <Text color={textColor} fontSize={{ base: "xs", md: "sm" }} textAlign="left">
                     Walkthrough of implementing user analytics dashboard with real-time data
                   </Text>
                 </VStack>
@@ -135,58 +138,60 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
                   value={video2Notes}
                   onChange={(e) => setVideo2Notes(e.target.value)}
                   resize="vertical"
-                  minH="100px"
+                  minH={{ base: "80px", md: "100px" }}
                   bg="gray.50"
+                  fontSize={{ base: "sm", md: "md" }}
                 />
 
                 <Flex gap={2}>
-                  <Button size="sm" colorScheme="purple" variant="outline" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="outline" flex={1}>
                     Play
                   </Button>
-                  <Button size="sm" colorScheme="purple" variant="ghost" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="ghost" flex={1}>
                     Download
                   </Button>
                 </Flex>
 
-                <Button size="sm" colorScheme="purple" variant="solid" w="full">
+                <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="solid" w="full">
                   ✨ 🧚 TICKET ✨
                 </Button>
               </VStack>
             </Box>
 
             {/* Video 3: Database Migration */}
-            <Box p={6} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
+            <Box p={{ base: 4, md: 6 }} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
               <VStack spacing={4} align="stretch">
-                <Box
-                  h="150px"
-                  bg="green.100"
-                  borderRadius="md"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  position="relative"
-                >
-                  <Icon as={FiVideo} w={12} h={12} color="green.500" />
-                  <Text
-                    position="absolute"
-                    bottom={2}
-                    right={2}
-                    bg="blackAlpha.700"
-                    color="white"
-                    px={2}
-                    py={1}
-                    borderRadius="sm"
-                    fontSize="xs"
+                <AspectRatio ratio={16 / 9}>
+                  <Box
+                    bg="green.100"
+                    borderRadius="md"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    position="relative"
                   >
-                    6:45
-                  </Text>
-                </Box>
+                    <Icon as={FiVideo} w={{ base: 10, md: 12 }} h={{ base: 10, md: 12 }} color="green.500" />
+                    <Text
+                      position="absolute"
+                      bottom={2}
+                      right={2}
+                      bg="blackAlpha.700"
+                      color="white"
+                      px={2}
+                      py={1}
+                      borderRadius="sm"
+                      fontSize="xs"
+                    >
+                      6:45
+                    </Text>
+                  </Box>
+                </AspectRatio>
 
                 <VStack spacing={2} align="start">
-                  <Text fontWeight="bold" fontSize="lg" textAlign="left">
+                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="left">
                     Database Migration
                   </Text>
-                  <Text color={textColor} fontSize="sm" textAlign="left">
+                  <Text color={textColor} fontSize={{ base: "xs", md: "sm" }} textAlign="left">
                     Step-by-step database schema update and data migration process
                   </Text>
                 </VStack>
@@ -196,20 +201,21 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
                   value={video3Notes}
                   onChange={(e) => setVideo3Notes(e.target.value)}
                   resize="vertical"
-                  minH="100px"
+                  minH={{ base: "80px", md: "100px" }}
                   bg="gray.50"
+                  fontSize={{ base: "sm", md: "md" }}
                 />
 
                 <Flex gap={2}>
-                  <Button size="sm" colorScheme="purple" variant="outline" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="outline" flex={1}>
                     Play
                   </Button>
-                  <Button size="sm" colorScheme="purple" variant="ghost" flex={1}>
+                  <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="ghost" flex={1}>
                     Download
                   </Button>
                 </Flex>
 
-                <Button size="sm" colorScheme="purple" variant="solid" w="full">
+                <Button size={{ base: "xs", md: "sm" }} colorScheme="purple" variant="solid" w="full">
                   ✨ 🧚 TICKET ✨
                 </Button>
               </VStack>

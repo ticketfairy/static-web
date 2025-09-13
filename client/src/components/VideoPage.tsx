@@ -1,4 +1,4 @@
-import { Box, Button, VStack, Heading, useColorModeValue, Icon, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, useDisclosure, Input, useToast, Text, SimpleGrid, Flex, Textarea } from "@chakra-ui/react";
+import { Box, Button, VStack, Heading, useColorModeValue, Icon, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Input, useToast, Text, SimpleGrid, Flex, Textarea } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft } from "react-icons/fi";
 import { useState, useRef } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
@@ -8,8 +8,10 @@ import { DraggableWebcamOverlay } from "./DraggableWebcamOverlay";
 import { VideoPreviewModal } from "./VideoPreviewModal";
 import { RecordingIndicator } from "./RecordingIndicator";
 import { TicketConversionModal } from "./TicketConversionModal";
+import { PermissionsPopup } from "./PermissionsPopup";
+import { ReadyToRecordModal } from "./ReadyToRecordModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
-import { downloadBlob, generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
+import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -26,7 +28,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   } = useDisclosure();
   const {
     isOpen: isVideoPreviewOpen,
-    onOpen: onVideoPreviewOpen,
     onClose: onVideoPreviewClose
   } = useDisclosure();
   const {
@@ -150,7 +151,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     requestPermissions,
     requestWebcamOnly,
     startCountdownAndRecord,
-    cleanup
+    cleanup,
+    hidePermissionsPopup,
+    requestScreenAndStart
   } = useScreenRecording();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,11 +231,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     // Close modal first
     onClose();
 
-    // Request permissions for both screen and webcam, then show webcam circle
-    const permissionsSuccess = await requestPermissions();
-    if (permissionsSuccess) {
-      // Webcam circle will appear automatically due to existing state management
-      // User can then click the webcam circle to start the countdown and recording
+    // Request webcam only - permissions popup will show automatically
+    const webcamSuccess = await requestWebcamOnly();
+    if (webcamSuccess) {
+      // Webcam circle and permissions popup will appear
     }
   };
 
@@ -263,8 +265,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           isClosable: true,
         });
 
-        // Still open preview for additional options
-        onVideoPreviewOpen();
+        // Clean up webcam stream and reset to initial state
+        cleanup();
+
+        // Don't open preview modal - just return to Create Video button state
       } else {
         toast({
           title: "Recording Error",
@@ -296,10 +300,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     await saveToVideos(blob, filename);
   };
 
-  const handleDownloadVideo = (blob: Blob) => {
-    const filename = generateRecordingFilename();
-    downloadBlob(blob, filename);
-  };
 
   const handleConvertToTicket = () => {
     onVideoPreviewClose();
@@ -595,7 +595,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         onClose={onVideoPreviewClose}
         videoBlob={recordedVideo}
         onSaveToVideos={handleSaveToVideos}
-        onDownload={handleDownloadVideo}
         onConvertToTicket={handleConvertToTicket}
         onRetake={handleRetakeRecording}
       />
@@ -606,6 +605,27 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         onClose={onTicketModalClose}
         videoBlob={recordedVideo}
         onSaveTicket={handleSaveTicket}
+      />
+
+      {/* Permissions Popup */}
+      <PermissionsPopup
+        isOpen={state.showPermissionsPopup}
+        onClose={() => {
+          hidePermissionsPopup();
+          cleanup();
+        }}
+        onStartRecording={requestScreenAndStart}
+      />
+
+      {/* Ready to Record Modal */}
+      {console.log('VideoPage render - showReadyModal:', state.showReadyModal)}
+      <ReadyToRecordModal
+        isOpen={state.showReadyModal}
+        onClose={() => {
+          // If closed, reset everything
+          cleanup();
+        }}
+        onStartRecording={startCountdownAndRecord}
       />
     </Box>
   );

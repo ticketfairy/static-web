@@ -1,27 +1,38 @@
-import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import LandingPage from "./LandingPage";
 import VideoPage from "./VideoPage";
 import MyTicketsPage from "./MyTicketsPage";
 
-export type Page = "landing" | "video" | "tickets";
-
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("landing");
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPageWrapper />} />
+        <Route path="/ticketfairy" element={<VideoPageWrapper />} />
+        <Route path="/tickets" element={<MyTicketsPageWrapper />} />
+      </Routes>
+    </Router>
+  );
+}
 
-  const navigateToPage = (page: Page) => {
-    setCurrentPage(page);
-  };
+function LandingPageWrapper() {
+  const navigate = useNavigate();
+  return <LandingPage onNavigateToVideo={() => navigate('/ticketfairy')} />;
+}
 
-  switch (currentPage) {
-    case "landing":
-      return <LandingPage onNavigateToVideo={() => navigateToPage("video")} />;
-    case "video":
-      return <VideoPage onNavigateToTickets={() => navigateToPage("tickets")} onNavigateToLanding={() => navigateToPage("landing")} />;
-    case "tickets":
-      return <MyTicketsPage onNavigateToLanding={() => navigateToPage("landing")} />;
-    default:
-      return <LandingPage onNavigateToVideo={() => navigateToPage("video")} />;
-  }
+function VideoPageWrapper() {
+  const navigate = useNavigate();
+  return (
+    <VideoPage
+      onNavigateToTickets={() => navigate('/tickets')}
+      onNavigateToLanding={() => navigate('/')}
+    />
+  );
+}
+
+function MyTicketsPageWrapper() {
+  const navigate = useNavigate();
+  return <MyTicketsPage onNavigateToLanding={() => navigate('/')} />;
 }
 
 export default App;
