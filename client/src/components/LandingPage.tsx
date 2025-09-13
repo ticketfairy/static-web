@@ -1,5 +1,6 @@
-import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue } from "@chakra-ui/react";
+import { Box, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Image, Tooltip } from "@chakra-ui/react";
 import { FiVideo, FiMic, FiUsers, FiClock, FiTrendingUp, FiSearch, FiHelpCircle } from "react-icons/fi";
+import TicketFairyButton from "./TicketFairyButton";
 
 interface LandingPageProps {
   onNavigateToVideo: () => void;
@@ -24,21 +25,134 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
       {/* Hero Section */}
       <Box w="100vw">
         <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto">
-          <Heading fontWeight={600} fontSize={{ base: "3xl", sm: "4xl", md: "6xl" }} lineHeight={"110%"}>
-            Make creating tickets as easy as{" "}
-            <Text as={"span"} color={"purple.400"}>
-              explaining them out loud
-            </Text>
-          </Heading>
+          {/* Images above header */}
+          <Flex 
+            direction={{ base: "column", md: "row" }} 
+            gap={20} 
+            align="center" 
+            justify="center"
+            mb={8}
+          >
+              <Tooltip 
+                label="✨ Integrate with Jira ✨" 
+                hasArrow 
+                placement="top"
+              bg="purple.500"
+              color="white"
+              fontSize="md"
+              fontWeight="bold"
+              borderRadius="md"
+              px={3}
+              py={2}
+            >
+              <Box
+                w={{ base: "200px", md: "250px" }}
+                h={{ base: "200px", md: "250px" }}
+                borderRadius="lg"
+                overflow="hidden"
+                boxShadow="lg"
+                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
+                cursor="pointer"
+                onClick={onNavigateToVideo}
+              >
+                <Image
+                  src="/image2.png"
+                  alt="The Rock as Ticket Fairy"
+                  w="100%"
+                  h="100%"
+                  objectFit="cover"
+                />
+              </Box>
+            </Tooltip>
+            
+            <Tooltip 
+              label="✨ Light as as a fairy ✨" 
+              hasArrow 
+              placement="top"
+              bg="purple.500"
+              color="white"
+              fontSize="md"
+              fontWeight="bold"
+              borderRadius="md"
+              px={3}
+              py={2}
+            >
+              <Box
+                w={{ base: "200px", md: "250px" }}
+                h={{ base: "200px", md: "250px" }}
+                borderRadius="lg"
+                overflow="hidden"
+                boxShadow="lg"
+                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
+                cursor="pointer"
+                onClick={onNavigateToVideo}
+              >
+                <Image
+                  src="/image1.png"
+                  alt="The Rock as Developer Ticket Fairy"
+                  w="100%"
+                  h="100%"
+                  objectFit="cover"
+                />
+              </Box>
+            </Tooltip>
+            
+            <Tooltip 
+              label="✨ Integrate with Linear ✨" 
+              hasArrow 
+              placement="top"
+              bg="purple.500"
+              color="white"
+              fontSize="md"
+              fontWeight="bold"
+              borderRadius="md"
+              px={3}
+              py={2}
+            >
+              <Box
+                w={{ base: "200px", md: "250px" }}
+                h={{ base: "200px", md: "250px" }}
+                borderRadius="lg"
+                overflow="hidden"
+                boxShadow="lg"
+                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
+                cursor="pointer"
+                onClick={onNavigateToVideo}
+              >
+                <Image
+                  src="/image3.png"
+                  alt="The Rock as Light Blue Fairy"
+                  w="100%"
+                  h="100%"
+                  objectFit="cover"
+                />
+              </Box>
+            </Tooltip>
+          </Flex>
 
-          <Text color={textColor} maxW={"3xl"} fontSize="xl">
-            Record a short video of yourself talking and your screen. AI transforms it into structured, ready-to-use tickets while
-            preserving the video for richer context.
+          <Heading 
+            fontWeight={600} 
+            fontSize={{ base: "3xl", sm: "4xl", md: "6xl" }} 
+            lineHeight={"110%"}
+            fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+          >
+          Wave your wand.{" "} <br />
+            <Text as={"span"} color={"purple.400"}>
+             Turn videos into tickets.
+            </Text>
+        </Heading>
+
+          <Text 
+            color={textColor} 
+            maxW={"3xl"} 
+            fontSize="2xl"
+            fontFamily="'Bitcount Grid Double', monospace"
+            fontWeight="400"
+          >
+            Record a video. Summon the ticket fairy. Get ready-to-use tickets.
           </Text>
 
-          <Button colorScheme="purple" size="lg" rightIcon={<Icon as={FiVideo} />} onClick={onNavigateToVideo}>
-            Ticket Fairy
-          </Button>
+          <TicketFairyButton onClick={onNavigateToVideo} />
         </VStack>
 
         {/* Problem Section */}
@@ -97,6 +211,36 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                 </VStack>
               </Box>
             </SimpleGrid>
+          </VStack>
+        </Box>
+
+        {/* Demo Video Section */}
+        <Box w="full" py={16}>
+          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
+            <Box
+              w="100%"
+              maxW="400px"
+              borderRadius="lg"
+              overflow="hidden"
+              boxShadow="xl"
+              _hover={{ transform: "scale(1.02)", transition: "transform 0.3s" }}
+            >
+              <video
+                width="100%"
+                height="auto"
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                poster=""
+                style={{ borderRadius: "8px" }}
+              >
+                <source src="/demo-video.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </Box>
           </VStack>
         </Box>
 

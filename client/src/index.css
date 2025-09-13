@@ -1,3 +1,14 @@
+/* CS Gordon font - loaded via HTML head for better performance */
+
+/* Ensure CS Gordon font is available */
+@font-face {
+  font-family: 'CS Gordon';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/csgordon/v1/CSGordon-Regular.woff2') format('woff2');
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -17,6 +28,7 @@ a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer;
 }
 a:hover {
   color: #535bf2;
@@ -28,6 +40,12 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24' transform='rotate(-90 16 16)'>🪄</text></svg>"), auto;
+}
+
+/* Sparkle cursor for hoverable elements */
+button, a, [role="button"], [tabindex], input, select, textarea, [onclick], [onmouseover] {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer !important;
 }
 
 h1 {
@@ -43,7 +61,7 @@ button {
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
-  cursor: pointer;
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer;
   transition: border-color 0.25s;
 }
 button:hover {
