@@ -2955,6 +2955,8 @@ source-map@^0.5.7:
   version "0.0.0"
   resolved "file:client"
   dependencies:
+    "@aws-sdk/client-s3" "^3.888.0"
+    "@aws-sdk/s3-request-presigner" "^3.888.0"
     "@chakra-ui/react" "^2.10.9"
     "@emotion/react" "^11.14.0"
     "@emotion/styled" "^11.14.1"
