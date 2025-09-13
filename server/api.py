@@ -3,11 +3,13 @@ from twelvelabs.indexes import IndexesCreateRequestModelsItem
 from twelvelabs.tasks import TasksRetrieveResponse
 import os
 from dotenv import load_dotenv
+from time import time
 
 load_dotenv()
 
 TWELVE_LABS_API_KEY = os.getenv("TWELVE_LABS_API_KEY")
-INDEX_NAME = 'ticket-summary3'
+time = time()
+INDEX_NAME = f'ticket-summary-{time}'
 PROMPT = '''
 ### Prompt:
 Analyze the following video and extract the key information about the requested changes. Create a concise, action-oriented developer ticket in JSON format. 
@@ -40,7 +42,7 @@ index = client.indexes.create(
 )
 print(f"Created index: id={index.id}")
 
-with open("/Users/sophieyang/Downloads/playground.mov", "rb") as file:
+with open("/Users/sophieyang/Desktop/rippling-test2.mov", "rb") as file:
     task = client.tasks.create(
         index_id=index.id, 
         video_file=file,
