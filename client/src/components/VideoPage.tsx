@@ -285,7 +285,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       try {
         // Convert File to Blob and add to collection
         const blob = new Blob([file], { type: file.type });
-        const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+        const fileName = file.name;
         const newVideo = await addVideoToCollection(blob, fileName);
 
         toast({

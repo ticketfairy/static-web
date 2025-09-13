@@ -70,11 +70,13 @@ export class S3VideoUploader {
 
   // Generate a unique key for the video file
   private generateVideoKey(filename?: string): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const randomId = Math.random().toString(36).substring(2, 8);
-    const extension = filename?.split(".").pop() || "webm";
+    // const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // const randomId = Math.random().toString(36).substring(2, 8);
+    const key = `videos/${filename}`;
 
-    return `videos/${timestamp}-${randomId}.${extension}`;
+    console.log("key", key);
+
+    return key;
   }
 
   // Upload video blob to S3
