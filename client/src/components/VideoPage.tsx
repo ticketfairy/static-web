@@ -26,7 +26,7 @@ import {
     Code,
     Spinner,
 } from "@chakra-ui/react";
-import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2 } from "react-icons/fi";
+import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy } from "react-icons/fi";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 
@@ -776,7 +776,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                         </VStack>
 
                                         <Textarea
-                                            placeholder="Add your notes about this video..."
+                                            placeholder="Add optional notes to this video before generating a ticket..."
                                             value={video.notes}
                                             onChange={(e) => updateVideoNotes(video.id, e.target.value)}
                                             resize="vertical"
@@ -854,7 +854,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                             loadingText="Generating Ticket..."
                                             isDisabled={!video.s3Url}
                                         >
-                                            {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 TICKET ✨"}
+                                            {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 GENERATE TICKET ✨"}
                                         </Button>
                                     </VStack>
                                 </Box>
@@ -1008,7 +1008,50 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
             <Modal isOpen={isTicketResultModalOpen} onClose={onTicketResultModalClose} size="lg">
                 <ModalOverlay />
                 <ModalContent>
-                    <ModalHeader>🎉 Generated Ticket</ModalHeader>
+                    <ModalHeader>
+                        <Flex justify="space-between" align="center">
+                            <Text>🎉 Generated Ticket</Text>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                    if (selectedTicket) {
+                                        let copyText = "";
+                                        
+                                        if (selectedTicket.success && selectedTicket.ticket) {
+                                            copyText = `Title: ${selectedTicket.ticket.title}\n\nDescription:\n${selectedTicket.ticket.description}\n\nVideo ID: ${selectedTicket.video_id}\nIndex ID: ${selectedTicket.index_id}`;
+                                        } else if (selectedTicket.raw_response) {
+                                            copyText = `Raw Analysis Result:\n${selectedTicket.raw_response}`;
+                                        } else {
+                                            copyText = "Analysis completed but no ticket data was returned.";
+                                        }
+                                        
+                                        navigator.clipboard.writeText(copyText).then(() => {
+                                            toast({
+                                                title: "Copied!",
+                                                description: "Ticket content copied to clipboard",
+                                                status: "success",
+                                                duration: 2000,
+                                                isClosable: true,
+                                            });
+                                        }).catch(() => {
+                                            toast({
+                                                title: "Copy Failed",
+                                                description: "Could not copy to clipboard",
+                                                status: "error",
+                                                duration: 3000,
+                                                isClosable: true,
+                                            });
+                                        });
+                                    }
+                                }}
+                                leftIcon={<Icon as={FiCopy} />}
+                                mr={8}
+                            >
+                                Copy
+                            </Button>
+                        </Flex>
+                    </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody>
                         {selectedTicket && (
@@ -1048,7 +1091,31 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         )}
                     </ModalBody>
                     <ModalFooter>
-                        <Button colorScheme="purple" mr={3} onClick={onTicketResultModalClose}>
+                        <Button colorScheme="blue" mr={3} onClick={() => {
+                            // TODO: Implement Jira integration
+                            toast({
+                                title: "Jira Integration",
+                                description: "Jira integration coming soon!",
+                                status: "info",
+                                duration: 3000,
+                                isClosable: true,
+                            });
+                        }}>
+                            Open in Jira
+                        </Button>
+                        <Button colorScheme="gray" mr={3} onClick={() => {
+                            // TODO: Implement Linear integration
+                            toast({
+                                title: "Linear Integration",
+                                description: "Linear integration coming soon!",
+                                status: "info",
+                                duration: 3000,
+                                isClosable: true,
+                            });
+                        }}>
+                            Open in Linear
+                        </Button>
+                        <Button colorScheme="purple" onClick={onTicketResultModalClose}>
                             Close
                         </Button>
                     </ModalFooter>
