@@ -5,6 +5,7 @@ import {
   Heading,
   useColorModeValue,
   Icon,
+  Image,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -24,7 +25,7 @@ import {
   AlertIcon,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2 } from "react-icons/fi";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import { RecordingModal } from "./RecordingModal";
 import { FloatingRecordingControls } from "./FloatingRecordingControls";
@@ -38,6 +39,7 @@ import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
 import { useS3Upload, useS3VideoList } from "../hooks/useS3Upload";
 import type { S3VideoMetadata } from "../utils/s3Upload";
+import { generateThumbnailFromBlob, generateThumbnailFromUrl, createPlaceholderThumbnail } from "../utils/videoThumbnails";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -55,6 +57,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<VideoItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [s3VideoThumbnails, setS3VideoThumbnails] = useState<Record<string, string>>({});
+  const [generatingThumbnails, setGeneratingThumbnails] = useState<Set<string>>(new Set());
 
   // Dynamic video collection state
   interface VideoItem {
@@ -64,6 +68,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     duration: string;
     thumbnailColor: string;
     thumbnailIconColor: string;
+    thumbnailUrl?: string; // Data URL for the video thumbnail
     notes: string;
     blob?: Blob;
     createdAt: Date;
@@ -85,34 +90,42 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const { listState, refreshVideoList, deleteVideo: deleteS3Video, isConfigured: isS3ListConfigured } = useS3VideoList();
 
   // Helper function to convert S3 video to VideoItem format
-  const convertS3VideoToVideoItem = (s3Video: S3VideoMetadata): VideoItem => {
-    // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.webm")
-    const keyParts = s3Video.key.split("/");
-    const filename = keyParts[keyParts.length - 1];
+  const convertS3VideoToVideoItem = useCallback(
+    (s3Video: S3VideoMetadata): VideoItem => {
+      // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.webm")
+      const keyParts = s3Video.key.split("/");
+      const filename = keyParts[keyParts.length - 1];
 
-    // Try to extract timestamp from filename
-    let title = filename;
-    let createdAt = s3Video.lastModified;
+      // Try to extract timestamp from filename
+      let title = filename;
+      let createdAt = s3Video.lastModified;
 
-    // Generate a reasonable duration estimate based on file size (very rough)
-    const estimatedDuration = Math.max(30, Math.min(600, Math.floor(s3Video.size / 100000))); // rough estimate
-    const minutes = Math.floor(estimatedDuration / 60);
-    const seconds = estimatedDuration % 60;
-    const durationString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      // Generate a reasonable duration estimate based on file size (very rough)
+      const estimatedDuration = Math.max(30, Math.min(600, Math.floor(s3Video.size / 100000))); // rough estimate
+      const minutes = Math.floor(estimatedDuration / 60);
+      const seconds = estimatedDuration % 60;
+      const durationString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
-    return {
-      id: s3Video.key,
-      title,
-      description: `Video uploaded to S3 (${(s3Video.size / (1024 * 1024)).toFixed(1)} MB)`,
-      duration: durationString,
-      thumbnailColor: "teal.100",
-      thumbnailIconColor: "teal.500",
-      notes: "",
-      createdAt,
-      s3Url: s3Video.url,
-      s3Key: s3Video.key,
-    };
-  };
+      // Use cached thumbnail if available, otherwise create placeholder
+      const cachedThumbnail = s3VideoThumbnails[s3Video.key];
+      const thumbnailUrl = cachedThumbnail || createPlaceholderThumbnail(title, durationString, "#319795");
+
+      return {
+        id: s3Video.key,
+        title,
+        description: `Video uploaded to S3 (${(s3Video.size / (1024 * 1024)).toFixed(1)} MB)`,
+        duration: durationString,
+        thumbnailColor: "teal.100",
+        thumbnailIconColor: "teal.500",
+        thumbnailUrl,
+        notes: "",
+        createdAt,
+        s3Url: s3Video.url,
+        s3Key: s3Video.key,
+      };
+    },
+    [s3VideoThumbnails]
+  );
 
   // Merge local videos with S3 videos
   const allVideos = useMemo(() => {
@@ -121,7 +134,58 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
     // Combine and sort by creation date (newest first)
     return [...s3Videos, ...localVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [listState.videos, videos]);
+  }, [listState.videos, videos, s3VideoThumbnails, convertS3VideoToVideoItem]);
+
+  // Generate real thumbnails for S3 videos asynchronously
+  const generateS3Thumbnails = useCallback(async () => {
+    const s3VideosNeedingThumbnails = listState.videos.filter(
+      (video) => !s3VideoThumbnails[video.key] && !generatingThumbnails.has(video.key)
+    );
+
+    if (s3VideosNeedingThumbnails.length === 0) return;
+
+    // Mark videos as being processed
+    setGeneratingThumbnails((prev) => {
+      const newSet = new Set(prev);
+      s3VideosNeedingThumbnails.forEach((video) => newSet.add(video.key));
+      return newSet;
+    });
+
+    for (const s3Video of s3VideosNeedingThumbnails) {
+      try {
+        const realThumbnail = await generateThumbnailFromUrl(s3Video.url, {
+          width: 320,
+          height: 180,
+          timeOffset: 2,
+        });
+
+        // Cache the thumbnail
+        setS3VideoThumbnails((prev) => ({
+          ...prev,
+          [s3Video.key]: realThumbnail,
+        }));
+      } catch (error) {
+        console.warn(`Failed to generate thumbnail for ${s3Video.key}:`, error);
+      } finally {
+        // Remove from generating set
+        setGeneratingThumbnails((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(s3Video.key);
+          return newSet;
+        });
+      }
+    }
+  }, [listState.videos, s3VideoThumbnails, generatingThumbnails]);
+
+  // Trigger S3 thumbnail generation when S3 videos are loaded
+  useEffect(() => {
+    if (listState.videos.length > 0 && !listState.isLoading) {
+      // Small delay to allow UI to render first
+      setTimeout(() => {
+        generateS3Thumbnails();
+      }, 1000);
+    }
+  }, [listState.videos, listState.isLoading, generateS3Thumbnails]);
 
   // Helper function to generate video duration from blob
   const getVideoDuration = (blob: Blob): Promise<string> => {
@@ -220,6 +284,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       .toString()
       .padStart(2, "0")}:${timestamp.getSeconds().toString().padStart(2, "0")}`;
 
+    // Generate thumbnail for the video
+    let thumbnailUrl: string | undefined;
+    try {
+      thumbnailUrl = await generateThumbnailFromBlob(blob, {
+        width: 320,
+        height: 180,
+        timeOffset: 1,
+      });
+    } catch (error) {
+      console.warn("Failed to generate thumbnail:", error);
+      // Fallback to placeholder thumbnail
+      thumbnailUrl = createPlaceholderThumbnail(title || formattedTimestamp, duration, "#805AD5");
+    }
+
     const newVideo: VideoItem = {
       id: `video-${timestamp.getTime()}`,
       title: title || formattedTimestamp,
@@ -227,6 +305,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       duration,
       thumbnailColor: "purple.100",
       thumbnailIconColor: "purple.500",
+      thumbnailUrl,
       notes: "",
       blob,
       createdAt: timestamp,
@@ -587,8 +666,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       display="flex"
                       alignItems="center"
                       justifyContent="center"
-                      position="relative">
-                      <Icon as={FiVideo} w={12} h={12} color={video.thumbnailIconColor} />
+                      position="relative"
+                      overflow="hidden">
+                      {video.thumbnailUrl ? (
+                        <Image
+                          src={video.thumbnailUrl}
+                          alt={`Thumbnail for ${video.title}`}
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                          borderRadius="md"
+                        />
+                      ) : (
+                        <Icon as={FiVideo} w={12} h={12} color={video.thumbnailIconColor} />
+                      )}
                       <Text
                         position="absolute"
                         bottom={2}
