@@ -438,7 +438,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   };
 
   return (
-    <Box bg={bgColor} minH="100vh">
+    <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       {/* Back Button */}
       {onNavigateToLanding && (
         <Box p={4}>
@@ -449,7 +449,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       )}
 
       {/* Video Page Content */}
-      <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto">
+      <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto" flex="1" justify="flex-start" align="center">
         {!streams.webcamStream ? (
           <Button
             colorScheme="purple"
@@ -500,7 +500,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
         {/* Sample Videos Section */}
         <Box w="full" pt={16}>
-          <VStack spacing={8}>
+          <VStack spacing={8} align="center">
             <Heading fontSize="2xl" textAlign="center">
               🦷 My{" "}
               <Text as="span" textDecoration="line-through">
@@ -531,7 +531,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               </Button>
             )}
 
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} w="full">
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6} w="full" maxW="1000px" mx="auto">
               {allVideos.map((video) => (
                 <Box key={video.id} p={6} shadow="lg" borderWidth="1px" borderRadius="lg" bg={bgColor}>
                   <VStack spacing={4} align="stretch">
