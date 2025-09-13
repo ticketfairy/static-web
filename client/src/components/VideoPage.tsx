@@ -31,6 +31,7 @@ import { RecordingModal } from "./RecordingModal";
 import { FloatingRecordingControls } from "./FloatingRecordingControls";
 import { DraggableWebcamOverlay } from "./DraggableWebcamOverlay";
 import { VideoPreviewModal } from "./VideoPreviewModal";
+import { VideoPlayerModal } from "./VideoPlayerModal";
 import { RecordingIndicator } from "./RecordingIndicator";
 import { TicketConversionModal } from "./TicketConversionModal";
 import { PermissionsPopup } from "./PermissionsPopup";
@@ -53,9 +54,11 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const { isOpen: isVideoPreviewOpen, onClose: onVideoPreviewClose } = useDisclosure();
   const { isOpen: isTicketModalOpen, onOpen: onTicketModalOpen, onClose: onTicketModalClose } = useDisclosure();
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
+  const { isOpen: isVideoPlayerOpen, onOpen: onVideoPlayerOpen, onClose: onVideoPlayerClose } = useDisclosure();
 
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<VideoItem | null>(null);
+  const [videoToPlay, setVideoToPlay] = useState<VideoItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [s3VideoThumbnails, setS3VideoThumbnails] = useState<Record<string, string>>({});
   const [generatingThumbnails, setGeneratingThumbnails] = useState<Set<string>>(new Set());
@@ -336,6 +339,12 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const handleDeleteVideo = (video: VideoItem) => {
     setVideoToDelete(video);
     onDeleteModalOpen();
+  };
+
+  // Helper function to handle play video
+  const handlePlayVideo = (video: VideoItem) => {
+    setVideoToPlay(video);
+    onVideoPlayerOpen();
   };
 
   // Helper function to confirm and delete video
@@ -755,7 +764,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     />
 
                     <Flex gap={2}>
-                      <Button size="sm" colorScheme="purple" variant="outline" flex={1}>
+                      <Button
+                        size="sm"
+                        colorScheme="purple"
+                        variant="outline"
+                        flex={1}
+                        onClick={() => handlePlayVideo(video)}
+                        isDisabled={!video.blob && !video.s3Url}>
                         Play
                       </Button>
                       <Button
@@ -949,6 +964,15 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        isOpen={isVideoPlayerOpen}
+        onClose={onVideoPlayerClose}
+        videoTitle={videoToPlay?.title || ""}
+        videoBlob={videoToPlay?.blob}
+        videoUrl={videoToPlay?.s3Url}
+      />
     </Box>
   );
 }
