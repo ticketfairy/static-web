@@ -1,4 +1,4 @@
-import { Box, Button, Container, Flex, Heading, Text, VStack, HStack, Icon, SimpleGrid, useColorModeValue } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Text, VStack, HStack, Icon, SimpleGrid, useColorModeValue } from "@chakra-ui/react";
 import { FiVideo, FiMic, FiEdit, FiUsers, FiClock, FiTrendingUp } from "react-icons/fi";
 
 function App() {
@@ -21,8 +21,8 @@ function App() {
       </Flex>
 
       {/* Hero Section */}
-      <Container maxW="1200px" centerContent>
-        <VStack spacing={8} textAlign="center" py={20}>
+      <Box w="100vw">
+        <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto">
           <Heading fontWeight={600} fontSize={{ base: "3xl", sm: "4xl", md: "6xl" }} lineHeight={"110%"}>
             Make creating tickets as easy as{" "}
             <Text as={"span"} color={"purple.400"}>
@@ -47,7 +47,7 @@ function App() {
 
         {/* Problem Section */}
         <Box w="full" py={16}>
-          <VStack spacing={8} textAlign="center">
+          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
             <Heading fontSize="3xl" color="red.400">
               The Problems We Solve
             </Heading>
@@ -106,7 +106,7 @@ function App() {
 
         {/* Solution Section */}
         <Box w="full" py={16}>
-          <VStack spacing={8} textAlign="center">
+          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
             <Heading fontSize="3xl" color="purple.400">
               Our Solution
             </Heading>
@@ -153,7 +153,7 @@ function App() {
 
         {/* CTA Section */}
         <Box w="full" py={16} textAlign="center">
-          <VStack spacing={6}>
+          <VStack spacing={6} px={4} maxW="1200px" mx="auto">
             <Heading fontSize="2xl">Ready to transform your team's workflow?</Heading>
             <Text color={textColor} fontSize="lg">
               Make working with your team easy and exciting. Abstract the annoying tasks.
@@ -163,7 +163,7 @@ function App() {
             </Button>
           </VStack>
         </Box>
-      </Container>
+      </Box>
     </Box>
   );
 }
