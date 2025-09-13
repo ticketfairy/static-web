@@ -350,6 +350,33 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     }
   };
 
+  // Helper function to generate unique filename
+  const generateUniqueFilename = (baseFilename: string): string => {
+    // Get all existing video titles from both local and S3 videos
+    const existingTitles = allVideos.map((video) => video.title);
+
+    // If the base filename doesn't exist, return it as is
+    if (!existingTitles.includes(baseFilename)) {
+      return baseFilename;
+    }
+
+    // Extract the name and extension
+    const lastDotIndex = baseFilename.lastIndexOf(".");
+    const name = lastDotIndex > 0 ? baseFilename.substring(0, lastDotIndex) : baseFilename;
+    const extension = lastDotIndex > 0 ? baseFilename.substring(lastDotIndex) : "";
+
+    // Find the next available number
+    let counter = 1;
+    let newFilename: string;
+
+    do {
+      newFilename = `${name} (${counter})${extension}`;
+      counter++;
+    } while (existingTitles.includes(newFilename));
+
+    return newFilename;
+  };
+
   // Helper function to add new video to collection
   const addVideoToCollection = async (blob: Blob, title?: string) => {
     const duration = await getVideoDuration(blob);
@@ -364,6 +391,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       .toString()
       .padStart(2, "0")}:${timestamp.getSeconds().toString().padStart(2, "0")}`;
 
+    // Generate unique title to avoid duplicates
+    const baseTitle = title || formattedTimestamp;
+    const uniqueTitle = generateUniqueFilename(baseTitle);
+
     // Generate thumbnail for the video
     let thumbnailUrl: string | undefined;
     try {
@@ -375,12 +406,12 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     } catch (error) {
       console.warn("Failed to generate thumbnail:", error);
       // Fallback to placeholder thumbnail
-      thumbnailUrl = createPlaceholderThumbnail(title || formattedTimestamp, duration, "#805AD5");
+      thumbnailUrl = createPlaceholderThumbnail(uniqueTitle, duration, "#805AD5");
     }
 
     const newVideo: VideoItem = {
       id: `video-${timestamp.getTime()}`,
-      title: title || formattedTimestamp,
+      title: uniqueTitle,
       description: "Screen recording with webcam",
       duration,
       thumbnailColor: "purple.100",
@@ -400,7 +431,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     if (isS3Configured) {
       // Use setTimeout to ensure the video is added to state first
       setTimeout(() => {
-        uploadVideoToS3(blob, newVideo.id, title);
+        uploadVideoToS3(blob, newVideo.id, uniqueTitle);
       }, 100);
     }
 
@@ -579,7 +610,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           isClosable: true,
         });
 
-        const newVideo = await addVideoToCollection(recordingBlob);
+        const baseFilename = "Screen Recording.webm";
+        const uniqueFilename = generateUniqueFilename(baseFilename);
+
+        const newVideo = await addVideoToCollection(recordingBlob, uniqueFilename);
 
         toast({
           title: "Recording Saved!",
