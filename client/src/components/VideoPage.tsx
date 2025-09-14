@@ -1059,13 +1059,16 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     borderWidth="1px"
                     borderColor="gray.200"
                     overflow="hidden"
+                    h="600px"
+                    display="flex"
+                    flexDirection="column"
                     _hover={{
                       transform: "translateY(-4px)",
                       shadow: "2xl",
                       borderColor: "purple.300",
                     }}
                     transition="all 0.3s ease">
-                    <VStack spacing={0} align="stretch">
+                    <VStack spacing={0} align="stretch" h="full">
                       {/* Video Thumbnail */}
                       <Box
                         h="180px"
@@ -1153,8 +1156,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         )}
                       </Box>
 
-                      {/* Card Content */}
-                      <VStack spacing={4} p={6} align="stretch">
+                      {/* Card Content - Top Section */}
+                      <VStack spacing={3} p={6} pb={3} align="stretch">
                         {/* Title and Description */}
                         <VStack spacing={2} align="start">
                           <Text fontWeight="bold" fontSize="lg" textAlign="left" color="gray.800" noOfLines={2}>
@@ -1208,137 +1211,142 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         </HStack>
                       </VStack>
 
-                      {/* Notes Section */}
-                      <Box px={6} pb={4}>
-                        <VStack spacing={3} align="stretch">
-                          <Text fontSize="sm" fontWeight="medium" color="gray.700">
-                            📝 Video Notes (Optional)
-                          </Text>
-                          <Textarea
-                            placeholder="Add context, bug details, or specific requirements to help AI generate better tickets..."
-                            value={videoNotes[video.id] || ""}
-                            onChange={(e) => updateVideoNotes(video.id, e.target.value)}
-                            resize="vertical"
-                            minH="80px"
-                            bg="gray.50"
-                            borderColor="gray.200"
-                            borderRadius="lg"
-                            fontSize="sm"
-                            _focus={{
-                              borderColor: "purple.300",
-                              bg: "white",
-                            }}
-                          />
-                        </VStack>
-                      </Box>
-
-                      {/* Action Buttons */}
-                      <Box px={6} pb={6}>
-                        <VStack spacing={3}>
-                          {/* Primary Actions */}
-                          <HStack spacing={2} w="full">
-                            <Button
-                              size="sm"
-                              colorScheme="purple"
-                              variant="outline"
-                              flex={1}
-                              onClick={() => handlePlayVideo(video)}
-                              isDisabled={!video.blob && !video.s3Url}
-                              leftIcon={<Icon as={FiPlay} />}
-                              borderRadius="lg">
-                              Play
-                            </Button>
-                            <Button
-                              size="sm"
-                              colorScheme="purple"
-                              variant="outline"
-                              flex={1}
-                              onClick={() => {
-                                const shareableLink =
-                                  video.s3Url || (video.blob ? `https://ticketfairy.app/video/${video.id}` : "Link not available");
-
-                                navigator.clipboard
-                                  .writeText(shareableLink)
-                                  .then(() => {
-                                    toast({
-                                      title: "Link Copied!",
-                                      description: video.s3Url ? "Cloud video link copied to clipboard" : "Video link copied to clipboard",
-                                      status: "success",
-                                      duration: 2000,
-                                      isClosable: true,
-                                    });
-                                  })
-                                  .catch(() => {
-                                    toast({
-                                      title: "Copy Failed",
-                                      description: "Could not copy link to clipboard",
-                                      status: "error",
-                                      duration: 3000,
-                                      isClosable: true,
-                                    });
-                                  });
+                      {/* Bottom Section - Notes and Actions */}
+                      <VStack spacing={0} mt="auto">
+                        {/* Notes Section */}
+                        <Box px={6} pb={3} w="full">
+                          <VStack spacing={2} align="stretch">
+                            <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                              📝 Video Notes (Optional)
+                            </Text>
+                            <Textarea
+                              placeholder="Add context, bug details, or specific requirements to help AI generate better tickets..."
+                              value={videoNotes[video.id] || ""}
+                              onChange={(e) => updateVideoNotes(video.id, e.target.value)}
+                              resize="none"
+                              h="60px"
+                              bg="gray.50"
+                              borderColor="gray.200"
+                              borderRadius="lg"
+                              fontSize="sm"
+                              _focus={{
+                                borderColor: "purple.300",
+                                bg: "white",
                               }}
-                              isDisabled={!video.blob && !video.s3Url}
-                              leftIcon={<Icon as={FiCopy} />}
-                              borderRadius="lg">
-                              Share
-                            </Button>
-                            <Button
-                              size="sm"
-                              colorScheme="red"
-                              variant="outline"
-                              onClick={() => handleDeleteVideo(video)}
-                              title="Delete video"
-                              borderRadius="lg">
-                              <Icon as={FiTrash2} />
-                            </Button>
-                          </HStack>
+                            />
+                          </VStack>
+                        </Box>
 
-                          {/* Generate Ticket Button */}
-                          <Button
-                            size="md"
-                            w="full"
-                            onClick={() => {
-                              const ticket = videoTickets[video.id];
-                              if (ticket) {
-                                setSelectedTicket(ticket);
-                                onTicketResultModalOpen();
-                              } else if (video.s3Url && !analyzingVideos.has(video.id)) {
-                                analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
-                              } else {
-                                toast({
-                                  title: "Video Not Ready",
-                                  description: "This video needs to be uploaded to cloud storage first.",
-                                  status: "warning",
-                                  duration: 3000,
-                                  isClosable: true,
-                                });
+                        {/* Action Buttons */}
+                        <Box px={6} pb={6} w="full">
+                          <VStack spacing={3}>
+                            {/* Primary Actions */}
+                            <HStack spacing={2} w="full">
+                              <Button
+                                size="sm"
+                                colorScheme="purple"
+                                variant="outline"
+                                flex={1}
+                                onClick={() => handlePlayVideo(video)}
+                                isDisabled={!video.blob && !video.s3Url}
+                                leftIcon={<Icon as={FiPlay} />}
+                                borderRadius="lg">
+                                Play
+                              </Button>
+                              <Button
+                                size="sm"
+                                colorScheme="purple"
+                                variant="outline"
+                                flex={1}
+                                onClick={() => {
+                                  const shareableLink =
+                                    video.s3Url || (video.blob ? `https://ticketfairy.app/video/${video.id}` : "Link not available");
+
+                                  navigator.clipboard
+                                    .writeText(shareableLink)
+                                    .then(() => {
+                                      toast({
+                                        title: "Link Copied!",
+                                        description: video.s3Url
+                                          ? "Cloud video link copied to clipboard"
+                                          : "Video link copied to clipboard",
+                                        status: "success",
+                                        duration: 2000,
+                                        isClosable: true,
+                                      });
+                                    })
+                                    .catch(() => {
+                                      toast({
+                                        title: "Copy Failed",
+                                        description: "Could not copy link to clipboard",
+                                        status: "error",
+                                        duration: 3000,
+                                        isClosable: true,
+                                      });
+                                    });
+                                }}
+                                isDisabled={!video.blob && !video.s3Url}
+                                leftIcon={<Icon as={FiCopy} />}
+                                borderRadius="lg">
+                                Share
+                              </Button>
+                              <Button
+                                size="sm"
+                                colorScheme="red"
+                                variant="outline"
+                                onClick={() => handleDeleteVideo(video)}
+                                title="Delete video"
+                                borderRadius="lg">
+                                <Icon as={FiTrash2} />
+                              </Button>
+                            </HStack>
+
+                            {/* Generate Ticket Button */}
+                            <Button
+                              size="md"
+                              w="full"
+                              onClick={() => {
+                                const ticket = videoTickets[video.id];
+                                if (ticket) {
+                                  setSelectedTicket(ticket);
+                                  onTicketResultModalOpen();
+                                } else if (video.s3Url && !analyzingVideos.has(video.id)) {
+                                  analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
+                                } else {
+                                  toast({
+                                    title: "Video Not Ready",
+                                    description: "This video needs to be uploaded to cloud storage first.",
+                                    status: "warning",
+                                    duration: 3000,
+                                    isClosable: true,
+                                  });
+                                }
+                              }}
+                              isLoading={analyzingVideos.has(video.id)}
+                              loadingText="AI Generating Ticket..."
+                              isDisabled={!video.s3Url}
+                              bgGradient={
+                                videoTickets[video.id] ? "linear(to-r, green.500, green.600)" : "linear(to-r, purple.500, pink.500)"
                               }
-                            }}
-                            isLoading={analyzingVideos.has(video.id)}
-                            loadingText="AI Generating Ticket..."
-                            isDisabled={!video.s3Url}
-                            bgGradient={
-                              videoTickets[video.id] ? "linear(to-r, green.500, green.600)" : "linear(to-r, purple.500, pink.500)"
-                            }
-                            color="white"
-                            _hover={{
-                              bgGradient: videoTickets[video.id]
-                                ? "linear(to-r, green.600, green.700)"
-                                : "linear(to-r, purple.600, pink.600)",
-                              transform: "translateY(-1px)",
-                            }}
-                            _disabled={{
-                              bgGradient: "linear(to-r, gray.300, gray.400)",
-                              color: "gray.500",
-                            }}
-                            borderRadius="lg"
-                            fontWeight="bold"
-                            shadow="md">
-                            {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 GENERATE TICKET ✨"}
-                          </Button>
-                        </VStack>
-                      </Box>
+                              color="white"
+                              _hover={{
+                                bgGradient: videoTickets[video.id]
+                                  ? "linear(to-r, green.600, green.700)"
+                                  : "linear(to-r, purple.600, pink.600)",
+                                transform: "translateY(-1px)",
+                              }}
+                              _disabled={{
+                                bgGradient: "linear(to-r, gray.300, gray.400)",
+                                color: "gray.500",
+                              }}
+                              borderRadius="lg"
+                              fontWeight="bold"
+                              shadow="md">
+                              {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 GENERATE TICKET ✨"}
+                            </Button>
+                          </VStack>
+                        </Box>
+                      </VStack>
                     </VStack>
                   </Box>
                 ))}
