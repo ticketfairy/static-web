@@ -1,5 +1,4 @@
 import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button } from "@chakra-ui/react";
-import TicketFairyButton from "./TicketFairyButton";
 import SparkleTrail from "./SparkleTrail";
 
 interface LandingPageProps {
@@ -14,9 +13,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
     <Box bg={bgColor} minH="100vh">
       <SparkleTrail />
       {/* Header */}
-      <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1200px" mx="auto">
+      <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1200px" mx="auto" position="sticky" top="0" bg={bgColor} zIndex="1000">
         <Flex align="center" mr={5}>
-          <Heading as="h1" size="lg" letterSpacing={"tighter"} color="purple.500">
+          <Heading as="h1" size="lg" letterSpacing={"tighter"} color="purple.500" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
             🧚 Ticket Fairy
           </Heading>
         </Flex>
@@ -31,6 +30,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
             boxShadow: "lg",
           }}
           transition="all 0.2s"
+          fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+          fontSize="1rem"
+          fontWeight="500"
         >
           Ticket Fairy
         </Button>
@@ -85,17 +87,20 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
             fontFamily="'Bitcount Grid Double', monospace"
             fontWeight="400"
           >
-            Record a video. Summon the ticket fairy. Get ready-to-use tickets.
+            Record a video explaining what you want. Summon the ticket fairy. Get ready-to-use tickets.<br />
+            <br />
           </Text>
-
-          <TicketFairyButton onClick={onNavigateToVideo} />
         </VStack>
+
+        <Box height={10} />
+        <Box mx="auto" maxW="1200px" borderTop="1px solid" borderColor="gray.200" />
+        <Box height={20} />
 
         {/* Problem Section */}
         <Box w="full" py={16}>
-          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
-            <Heading fontSize="3xl" color="red.400">
-              🧚‍♀️ Tickets are Toothaches 🦷
+          <VStack spacing={24} textAlign="center" px={4} maxW="1200px" mx="auto">
+            <Heading fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} color="purple.400" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+              🦷 Tickets are Toothaches 🦷
             </Heading>
 
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
@@ -116,10 +121,10 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                       objectFit="cover"
                     />
                   </Box>
-                  <Text fontWeight="bold" fontSize="lg">
-                    🦷🔍 Hidden Cavities
+                  <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+                    Hidden Cavities 🦷 🔍 
                   </Text>
-                  <Text color={textColor} textAlign="center">
+                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Team members work in isolation, creating hidden problems that go undetected until they become painful
                   </Text>
                 </VStack>
@@ -142,10 +147,10 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                       objectFit="cover"
                     />
                   </Box>
-                  <Text fontWeight="bold" fontSize="lg">
-                    ⏰🦷 Endless Root Canal
+                  <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+                    Endless Root Canal 🦷 ⏰
                   </Text>
-                  <Text color={textColor} textAlign="center">
+                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Writing detailed tickets feels like a never-ending procedure that drains time and energy
                   </Text>
                 </VStack>
@@ -168,10 +173,10 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                       objectFit="cover"
                     />
                   </Box>
-                  <Text fontWeight="bold" fontSize="lg">
-                    😵🦷 Toothache Without a Cause
+                  <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+                    Toothache Without a Cause 🦷 😵 
                   </Text>
-                  <Text color={textColor} textAlign="center">
+                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Unclear tickets cause confusion and pain, making it impossible to know what's actually needed
                   </Text>
                 </VStack>
@@ -194,10 +199,10 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                       objectFit="cover"
                     />
                   </Box>
-                  <Text fontWeight="bold" fontSize="lg">
-                    🌱🦷 Wisdom Teeth Coming In
+                  <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+                    Wisdom Teeth Coming In 🦷 🌱 
                   </Text>
-                  <Text color={textColor} textAlign="center">
+                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     New team members experience growing pains as they slowly break through existing workflows
                   </Text>
                 </VStack>
