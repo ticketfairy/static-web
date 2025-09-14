@@ -1140,7 +1140,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               bgClip="text"
               textAlign="center"
               lineHeight="1.1">
-              ✨ Ticket Fairy Studio ✨
+              ✨ Judy is Awesome ✨
             </Heading>
           </VStack>
 
