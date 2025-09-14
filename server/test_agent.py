@@ -43,10 +43,10 @@ def test_ticket_analysis():
             
         agent = ClaudeCodeAgent("", anthropic_api_key)
         
-        # Analyze ticket
-        analysis = agent.analyze_ticket(ticket_description)
+        # Analyze ticket and get implementation
+        analysis, code_changes = agent.analyze_ticket(ticket_description)
         
-        print("✅ Ticket analysis completed!")
+        print("✅ Ticket analysis and implementation completed!")
         print(f"📋 Title: {analysis.title}")
         print(f"📝 Description: {analysis.description[:100]}...")
         print(f"📋 Requirements ({len(analysis.requirements)}):")
@@ -59,6 +59,13 @@ def test_ticket_analysis():
         for i, step in enumerate(analysis.implementation_plan, 1):
             print(f"   {i}. {step}")
         print(f"⚡ Complexity: {analysis.estimated_complexity}")
+        print(f"💻 Code changes generated: {len(code_changes)}")
+        for i, change in enumerate(code_changes, 1):
+            print(f"   {i}. {change.file_path}: {change.change_description}")
+            if len(change.new_content) > 100:
+                print(f"      Content preview: {change.new_content[:100]}...")
+            else:
+                print(f"      Content: {change.new_content}")
         
         return True
         

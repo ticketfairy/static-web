@@ -65,6 +65,8 @@ import { RecordingIndicator } from "./RecordingIndicator";
 import { TicketConversionModal } from "./TicketConversionModal";
 import { PermissionsPopup } from "./PermissionsPopup";
 import { ReadyToRecordModal } from "./ReadyToRecordModal";
+import ClaudeAgentModal from "./ClaudeAgentModal";
+import { GitHubIssueModal } from "./GitHubIssueModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
 import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
@@ -102,6 +104,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const [currentDescription, setCurrentDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { isOpen: isClaudeAgentModalOpen, onOpen: onClaudeAgentModalOpen, onClose: onClaudeAgentModalClose } = useDisclosure();
+  const { isOpen: isGitHubIssueModalOpen, onOpen: onGitHubIssueModalOpen, onClose: onGitHubIssueModalClose } = useDisclosure();
 
   // Dynamic video collection state
   interface VideoItem {
@@ -554,7 +558,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const handlePlayVideo = (video: VideoItem) => {
     setVideoToPlay(video);
     onVideoPlayerOpen();
-    
+
     // Check if this video has a ticket and automatically show it
     const videoTicket = videoTickets[video.id];
     if (videoTicket) {
@@ -910,7 +914,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
     try {
       // Find the video filename for S3 update
-      const videoKey = Object.keys(videoTickets).find(key => videoTickets[key] === selectedTicket);
+      const videoKey = Object.keys(videoTickets).find((key) => videoTickets[key] === selectedTicket);
       if (!videoKey) {
         throw new Error("Could not find associated video for this ticket");
       }
@@ -922,7 +926,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       // Update ticket in S3
       if (isS3TicketConfigured) {
         const updateResult = await updateTicket(filename, currentTitle, currentDescription);
-        
+
         if (!updateResult.success) {
           throw new Error(updateResult.error || "Failed to save to S3");
         }
@@ -939,7 +943,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       };
 
       // Update the ticket in local state
-      setVideoTickets(prev => ({
+      setVideoTickets((prev) => ({
         ...prev,
         [videoKey]: updatedTicket,
       }));
@@ -1184,8 +1188,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 <Text color="orange.700">{listState.error}</Text>
               </Alert>
             )}
-
-
 
             {/* Empty State */}
             {allVideos.length === 0 && !listState.isLoading && (
@@ -1658,14 +1660,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         onRetake={handleRetakeRecording}
       />
 
-      {/* Ticket Conversion Modal */}
-      <TicketConversionModal
-        isOpen={isTicketModalOpen}
-        onClose={onTicketModalClose}
-        videoBlob={recordedVideo}
-        onSaveTicket={handleSaveTicket}
-      />
-
       {/* Permissions Popup */}
       <PermissionsPopup
         isOpen={state.showPermissionsPopup}
@@ -1773,13 +1767,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                             if (ticketToUse) {
                               let copyText = "";
 
-                    if (ticketToUse.success && ticketToUse.ticket) {
-                      copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}\n\nVideo ID: ${ticketToUse.video_id}\nIndex ID: ${ticketToUse.index_id}`;
-                    } else if (ticketToUse.raw_response) {
-                      copyText = `Raw Analysis Result:\n${ticketToUse.raw_response}`;
-                    } else {
-                      copyText = "Analysis completed but no ticket data was returned.";
-                    }
+                              if (ticketToUse.success && ticketToUse.ticket) {
+                                copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}\n\nVideo ID: ${ticketToUse.video_id}\nIndex ID: ${ticketToUse.index_id}`;
+                              } else if (ticketToUse.raw_response) {
+                                copyText = `Raw Analysis Result:\n${ticketToUse.raw_response}`;
+                              } else {
+                                copyText = "Analysis completed but no ticket data was returned.";
+                              }
 
                               navigator.clipboard
                                 .writeText(copyText)
@@ -2024,6 +2018,18 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 }}>
                 Linear
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const ticketToUse = enhancedTicket || selectedTicket;
+                  if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
+                    onGitHubIssueModalOpen();
+                  }
+                }}
+                isDisabled={!selectedTicket?.success || !selectedTicket?.ticket}>
+                GitHub
+              </Button>
               <Button size="sm" colorScheme="purple" onClick={onTicketResultModalClose}>
                 Done
               </Button>
@@ -2031,6 +2037,28 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Claude Agent Modal */}
+      <ClaudeAgentModal
+        isOpen={isClaudeAgentModalOpen}
+        onClose={onClaudeAgentModalClose}
+        ticketData={
+          selectedTicket?.success && selectedTicket?.ticket
+            ? {
+                title: selectedTicket.ticket.title,
+                description: selectedTicket.ticket.description,
+              }
+            : null
+        }
+      />
+
+      {/* GitHub Issue Modal */}
+      <GitHubIssueModal
+        isOpen={isGitHubIssueModalOpen}
+        onClose={onGitHubIssueModalClose}
+        ticketTitle={(enhancedTicket || selectedTicket)?.ticket?.title || ""}
+        ticketDescription={(enhancedTicket || selectedTicket)?.ticket?.description || ""}
+      />
     </Box>
   );
 }

@@ -37,8 +37,8 @@ def example_analyze_ticket():
     
     agent = ClaudeCodeAgent(github_token, anthropic_api_key)
     
-    # Analyze the ticket
-    analysis = agent.analyze_ticket(ticket_description)
+    # Analyze the ticket and get implementation
+    analysis, code_changes = agent.analyze_ticket(ticket_description)
     
     print(f"Title: {analysis.title}")
     print(f"Description: {analysis.description}")
@@ -46,6 +46,9 @@ def example_analyze_ticket():
     print(f"Files to modify: {analysis.files_to_modify}")
     print(f"Implementation plan: {analysis.implementation_plan}")
     print(f"Estimated complexity: {analysis.estimated_complexity}")
+    print(f"Code changes generated: {len(code_changes)}")
+    for change in code_changes:
+        print(f"  - {change.file_path}: {change.change_description}")
 
 
 def example_generate_pr():

@@ -10,6 +10,7 @@ import json
 import cohere
 from jira_integration import create_jira_ticket
 from linear_integration import create_linear_issue
+from github_integration import create_github_issue, get_repository_info
 from claude_agent import create_pr_from_ticket, ClaudeCodeAgent
 
 load_dotenv()
@@ -178,6 +179,70 @@ def create_linear_issue_endpoint():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/create-github-issue", methods=["POST"])
+def create_github_issue_endpoint():
+    """
+    Create a GitHub issue from ticket data
+    @claude please review this endpoint for security and error handling
+    """
+    try:
+        # Get ticket data from request
+        data = request.get_json()
+        if not data or "title" not in data or "description" not in data or "repo_name" not in data:
+            return jsonify({"error": "title, description, and repo_name are required"}), 400
+
+        title = data["title"]
+        description = data["description"]
+        repo_name = data["repo_name"]
+        github_token = data.get("github_token", GITHUB_TOKEN)
+        labels = data.get("labels", [])  # Optional labels
+        assignees = data.get("assignees", [])  # Optional assignees
+
+        # Add Claude mention to description for potential AI assistance
+        enhanced_description = f"{description}\n\n---\n*Created by Ticket Fairy - @claude feel free to provide suggestions or improvements for this issue*"
+
+        # Create GitHub issue
+        result = create_github_issue(
+            title=title,
+            description=enhanced_description,
+            repo_name=repo_name,
+            github_token=github_token,
+            labels=labels,
+            assignees=assignees
+        )
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/github-repo-info", methods=["POST"])
+def github_repo_info_endpoint():
+    """Get repository information to validate access and check if issues are enabled"""
+    try:
+        data = request.get_json()
+        if not data or "repo_name" not in data:
+            return jsonify({"error": "repo_name is required"}), 400
+
+        repo_name = data["repo_name"]
+        github_token = data.get("github_token", GITHUB_TOKEN)
+
+        # Get repository info
+        result = get_repository_info(repo_name, github_token)
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def enhance_description_with_notes(original_description, user_notes):
     """Use Cohere to enhance the ticket description by incorporating user notes."""
     try:
@@ -318,13 +383,20 @@ def generate_pr():
             return jsonify({"error": "Anthropic API key is required (set ANTHROPIC_API_KEY env var or provide in request)"}), 400
         
         # Generate PR using Claude agent
-        result = create_pr_from_ticket(
-            ticket_description=ticket_description,
-            repo_name=repo_name,
-            github_token=github_token,
-            anthropic_api_key=anthropic_api_key,
-            base_branch=base_branch
-        )
+        try:
+            result = create_pr_from_ticket(
+                ticket_description=ticket_description,
+                repo_name=repo_name,
+                github_token=github_token,
+                anthropic_api_key=anthropic_api_key,
+                base_branch=base_branch
+            )
+        except Exception as e:
+            print(f"Error in create_pr_from_ticket: {e}")
+            return jsonify({
+                "success": False,
+                "error": f"Agent initialization or execution failed: {str(e)}"
+            }), 500
         
         if result.success:
             return jsonify({
@@ -370,6 +442,7 @@ def analyze_ticket():
         
         # Get repository context if repo_name is provided
         repository_context = ""
+        local_path = ""
         if repo_name and github_token:
             try:
                 _, local_path = agent.clone_repository(repo_name)
@@ -377,8 +450,8 @@ def analyze_ticket():
             except Exception as e:
                 print(f"Could not get repository context: {e}")
         
-        # Analyze the ticket
-        analysis = agent.analyze_ticket(ticket_description, repository_context)
+        # Analyze the ticket and get implementation
+        analysis, code_changes = agent.analyze_ticket(ticket_description, repository_context, local_path)
         
         return jsonify({
             "success": True,
@@ -388,8 +461,17 @@ def analyze_ticket():
                 "requirements": analysis.requirements,
                 "files_to_modify": analysis.files_to_modify,
                 "implementation_plan": analysis.implementation_plan,
-                "estimated_complexity": analysis.estimated_complexity
-            }
+                "estimated_complexity": analysis.estimated_complexity,
+                "ticket_number": analysis.ticket_number
+            },
+            "code_changes": [
+                {
+                    "file_path": change.file_path,
+                    "change_description": change.change_description,
+                    "content_preview": change.new_content[:200] + "..." if len(change.new_content) > 200 else change.new_content
+                }
+                for change in code_changes
+            ]
         })
         
     except Exception as e:
@@ -412,6 +494,51 @@ def agent_status():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/test-claude", methods=["POST"])
+def test_claude():
+    """
+    Test Claude agent with a simple ticket analysis
+    """
+    try:
+        data = request.get_json()
+        ticket_description = data.get("ticket_description", "Add a simple hello world function to the codebase")
+        
+        anthropic_api_key = data.get("anthropic_api_key", ANTHROPIC_API_KEY)
+        if not anthropic_api_key:
+            return jsonify({"error": "Anthropic API key is required"}), 400
+        
+        # Test the ticket analysis and implementation
+        agent = ClaudeCodeAgent("", anthropic_api_key)
+        analysis, code_changes = agent.analyze_ticket(ticket_description, "Sample repository with src/ directory")
+        
+        return jsonify({
+            "success": True,
+            "analysis": {
+                "title": analysis.title,
+                "description": analysis.description,
+                "requirements": analysis.requirements,
+                "files_to_modify": analysis.files_to_modify,
+                "implementation_plan": analysis.implementation_plan,
+                "estimated_complexity": analysis.estimated_complexity
+            },
+            "code_changes": [
+                {
+                    "file_path": change.file_path,
+                    "change_description": change.change_description,
+                    "content_preview": change.new_content[:200] + "..." if len(change.new_content) > 200 else change.new_content
+                }
+                for change in code_changes
+            ]
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 
 if __name__ == "__main__":
