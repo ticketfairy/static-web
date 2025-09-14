@@ -95,6 +95,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const [analyzingVideos, setAnalyzingVideos] = useState<Set<string>>(new Set());
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const { isOpen: isTicketResultModalOpen, onOpen: onTicketResultModalOpen, onClose: onTicketResultModalClose } = useDisclosure();
+  const [enhancementContext, setEnhancementContext] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhancedTicket, setEnhancedTicket] = useState<any>(null);
 
   // Dynamic video collection state
   interface VideoItem {
@@ -116,7 +119,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   }
 
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [videoNotes, setVideoNotes] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
@@ -319,7 +321,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     setAnalyzingVideos((prev) => new Set(prev).add(videoId));
 
     try {
-      const result = await analyzeVideo(s3Url, videoNotes[videoId] || "");
+      const result = await analyzeVideo(s3Url, "");
       console.log("API Result for video", videoId, ":", result);
 
       // Store the ticket result for this video
@@ -537,10 +539,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     return newVideo;
   };
 
-  // Helper function to update video notes
-  const updateVideoNotes = (videoId: string, notes: string) => {
-    setVideoNotes((prev) => ({ ...prev, [videoId]: notes }));
-  };
 
   // Helper function to handle delete video confirmation
   const handleDeleteVideo = (video: VideoItem) => {
@@ -796,6 +794,82 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       duration: 5000,
       isClosable: true,
     });
+  };
+
+  // Function to enhance ticket with Cohere
+  const enhanceTicketWithContext = async () => {
+    if (!selectedTicket || !selectedTicket.success || !selectedTicket.ticket || !enhancementContext.trim()) {
+      toast({
+        title: "Enhancement Failed",
+        description: "Please provide context to enhance the ticket",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsEnhancing(true);
+
+    try {
+      const response = await fetch("http://localhost:4000/enhance-ticket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: selectedTicket.ticket.title,
+          description: selectedTicket.ticket.description,
+          context: enhancementContext,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Create enhanced ticket object
+        const enhanced = {
+          ...selectedTicket,
+          ticket: {
+            title: result.title,
+            description: result.description,
+          },
+        };
+
+        setEnhancedTicket(enhanced);
+
+        toast({
+          title: "Ticket Enhanced!",
+          description: "Your ticket has been improved with the additional context",
+          status: "success",
+          duration: 4000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error(result.error || "Enhancement failed");
+      }
+    } catch (error) {
+      console.error("Error enhancing ticket:", error);
+      toast({
+        title: "Enhancement Failed",
+        description: "Could not enhance ticket. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  // Function to reset enhancement
+  const resetEnhancement = () => {
+    setEnhancedTicket(null);
+    setEnhancementContext("");
   };
 
   return (
@@ -1059,7 +1133,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     borderWidth="1px"
                     borderColor="gray.200"
                     overflow="hidden"
-                    h="600px"
                     display="flex"
                     flexDirection="column"
                     _hover={{
@@ -1215,32 +1288,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         </HStack>
                       </VStack>
 
-                      {/* Bottom Section - Notes and Actions */}
+                      {/* Bottom Section - Actions */}
                       <VStack spacing={0} mt="auto">
-                        {/* Notes Section */}
-                        <Box px={6} pb={3} w="full">
-                          <VStack spacing={2} align="stretch">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.700">
-                              📝 Video Notes (Optional)
-                            </Text>
-                            <Textarea
-                              placeholder="Add context, bug details, or specific requirements to help AI generate better tickets..."
-                              value={videoNotes[video.id] || ""}
-                              onChange={(e) => updateVideoNotes(video.id, e.target.value)}
-                              resize="none"
-                              h="60px"
-                              bg="gray.50"
-                              borderColor="gray.200"
-                              borderRadius="lg"
-                              fontSize="sm"
-                              _focus={{
-                                borderColor: "purple.300",
-                                bg: "white",
-                              }}
-                            />
-                          </VStack>
-                        </Box>
-
                         {/* Action Buttons */}
                         <Box px={6} pb={6} w="full">
                           <VStack spacing={3}>
@@ -1586,9 +1635,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       />
 
       {/* Ticket Result Modal */}
-      <Modal isOpen={isTicketResultModalOpen} onClose={onTicketResultModalClose} size="lg">
+      <Modal isOpen={isTicketResultModalOpen} onClose={() => { onTicketResultModalClose(); resetEnhancement(); }} size="xl">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent maxH="90vh" overflowY="auto">
           <ModalHeader>
             <Flex justify="space-between" align="center">
               <Text>🎉 Generated Ticket</Text>
@@ -1596,13 +1645,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  if (selectedTicket) {
+                  const ticketToUse = enhancedTicket || selectedTicket;
+                  if (ticketToUse) {
                     let copyText = "";
 
-                    if (selectedTicket.success && selectedTicket.ticket) {
-                      copyText = `Title: ${selectedTicket.ticket.title}\n\nDescription:\n${selectedTicket.ticket.description}\n\nVideo ID: ${selectedTicket.video_id}\nIndex ID: ${selectedTicket.index_id}`;
-                    } else if (selectedTicket.raw_response) {
-                      copyText = `Raw Analysis Result:\n${selectedTicket.raw_response}`;
+                    if (ticketToUse.success && ticketToUse.ticket) {
+                      copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}\n\nVideo ID: ${ticketToUse.video_id}\nIndex ID: ${ticketToUse.index_id}`;
+                    } else if (ticketToUse.raw_response) {
+                      copyText = `Raw Analysis Result:\n${ticketToUse.raw_response}`;
                     } else {
                       copyText = "Analysis completed but no ticket data was returned.";
                     }
@@ -1638,20 +1688,81 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           <ModalCloseButton />
           <ModalBody>
             {selectedTicket && (
-              <VStack spacing={4} align="start">
+              <VStack spacing={6} align="start">
+                {/* Enhancement Form */}
+                {selectedTicket.success && selectedTicket.ticket && (
+                  <Box w="full" p={4} bg="blue.50" borderRadius="lg" borderWidth="1px" borderColor="blue.200">
+                    <VStack spacing={4} align="start">
+                      <VStack spacing={2} align="start">
+                        <Text fontWeight="bold" color="blue.700" fontSize="md">
+                          🤖 Enhance with AI Context
+                        </Text>
+                        <Text fontSize="sm" color="blue.600">
+                          Add additional context to improve the ticket title and description using Cohere AI
+                        </Text>
+                      </VStack>
+
+                      <Textarea
+                        placeholder="Add specific requirements, edge cases, acceptance criteria, or any additional context that would help improve this ticket..."
+                        value={enhancementContext}
+                        onChange={(e) => setEnhancementContext(e.target.value)}
+                        resize="vertical"
+                        minH="80px"
+                        bg="white"
+                        borderColor="blue.300"
+                        _focus={{
+                          borderColor: "blue.500",
+                          boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                        }}
+                      />
+
+                      <HStack spacing={3} w="full">
+                        <Button
+                          colorScheme="blue"
+                          onClick={enhanceTicketWithContext}
+                          isLoading={isEnhancing}
+                          loadingText="Enhancing..."
+                          isDisabled={!enhancementContext.trim()}
+                          leftIcon={<Icon as={FiCloud} />}
+                          size="sm">
+                          Enhance Ticket
+                        </Button>
+                        {enhancedTicket && (
+                          <Button
+                            variant="outline"
+                            colorScheme="gray"
+                            onClick={resetEnhancement}
+                            size="sm">
+                            Reset to Original
+                          </Button>
+                        )}
+                      </HStack>
+                    </VStack>
+                  </Box>
+                )}
+
+                {/* Ticket Display */}
                 {selectedTicket.success && selectedTicket.ticket ? (
                   <VStack spacing={3} align="start" w="full">
+                    {enhancedTicket && (
+                      <Box w="full" p={2} bg="green.100" borderRadius="md" borderLeft="4px solid" borderLeftColor="green.500">
+                        <Text fontSize="sm" color="green.700" fontWeight="medium">
+                          ✨ Enhanced with AI - showing improved version
+                        </Text>
+                      </Box>
+                    )}
+
                     <Box p={4} bg="gray.50" borderRadius="md" w="full">
                       <VStack spacing={3} align="start">
                         <Text fontWeight="bold" color="purple.600" fontSize="lg">
                           Title:
                         </Text>
-                        <Text fontSize="md">{selectedTicket.ticket.title}</Text>
+                        <Text fontSize="md">{(enhancedTicket || selectedTicket).ticket.title}</Text>
                         <Text fontWeight="bold" color="purple.600" fontSize="lg" mt={2}>
                           Description:
                         </Text>
                         <Text fontSize="md" whiteSpace="pre-wrap">
-                          {selectedTicket.ticket.description}
+                          {(enhancedTicket || selectedTicket).ticket.description}
                         </Text>
                       </VStack>
                     </Box>
@@ -1679,19 +1790,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           </ModalBody>
           <ModalFooter>
             <Button
-              colorScheme="blue"
+              colorScheme="gray"
               mr={3}
               onClick={async () => {
-                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                const ticketToUse = enhancedTicket || selectedTicket;
+                if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
                   try {
-                    const response = await fetch("http://localhost:4000/create-jira-ticket", {
+                    const response = await fetch("http://localhost:4000/create-linear-issue", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({
-                        title: selectedTicket.ticket.title,
-                        description: selectedTicket.ticket.description,
+                        title: ticketToUse.ticket.title,
+                        description: ticketToUse.ticket.description,
                       }),
                     });
 
@@ -1744,7 +1856,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                             colorScheme="gray"
                             mr={3}
                             onClick={async () => {
-                                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                                const ticketToUse = enhancedTicket || selectedTicket;
+                                if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
                                     try {
                                         const response = await fetch("http://localhost:4000/create-linear-issue", {
                                             method: "POST",
@@ -1752,8 +1865,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                 "Content-Type": "application/json",
                                             },
                                             body: JSON.stringify({
-                                                title: selectedTicket.ticket.title,
-                                                description: selectedTicket.ticket.description,
+                                                title: ticketToUse.ticket.title,
+                                                description: ticketToUse.ticket.description,
                                             }),
                                         });
 
@@ -1767,7 +1880,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                 duration: 5000,
                                                 isClosable: true,
                                             });
-                                            
+
                                             // Open the Linear issue in a new tab
                                             window.open(result.url, "_blank");
                                         } else {

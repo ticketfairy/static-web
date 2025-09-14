@@ -209,5 +209,81 @@ def enhance_description_with_notes(original_description, user_notes):
         return f"{original_description}\n\nAdditional Notes:\n{user_notes}"
 
 
+@app.route("/enhance-ticket", methods=["POST"])
+def enhance_ticket():
+    """Use Cohere to enhance ticket title and description based on additional context."""
+    try:
+        data = request.get_json()
+        if not data or "title" not in data or "description" not in data or "context" not in data:
+            return jsonify({"error": "title, description, and context are required"}), 400
+
+        original_title = data["title"]
+        original_description = data["description"]
+        additional_context = data["context"]
+
+        if not additional_context.strip():
+            return jsonify({
+                "success": True,
+                "title": original_title,
+                "description": original_description
+            })
+
+        co = cohere.ClientV2(COHERE_API_KEY)
+
+        # Enhance the title
+        title_prompt = f"""You are helping to improve a developer ticket title. You have an original title and additional context. Create an enhanced title that is concise, specific, and incorporates key insights from the context.
+
+Original Title: {original_title}
+
+Additional Context: {additional_context}
+
+Please create an enhanced title that:
+1. Remains concise (under 80 characters)
+2. Is more specific and actionable than the original
+3. Incorporates key insights from the additional context
+4. Uses clear, professional language suitable for a ticketing system
+
+Return only the enhanced title, no additional commentary."""
+
+        title_response = co.chat(
+            model="command-r-03-2024", 
+            messages=[{"role": "user", "content": title_prompt}]
+        )
+        enhanced_title = title_response.message.content[0].text.strip()
+
+        # Enhance the description
+        description_prompt = f"""You are helping to improve a developer ticket description. You have an original description and additional context. Create an enhanced description that incorporates the additional context while maintaining clarity and actionability.
+
+Original Description: {original_description}
+
+Additional Context: {additional_context}
+
+Please create an enhanced description that:
+1. Keeps the core information from the original description
+2. Incorporates relevant insights and requirements from the additional context
+3. Maintains a professional, developer-friendly tone
+4. Ensures the description is actionable and clear
+5. Removes any redundancy between the original and context
+6. Provides clear acceptance criteria or next steps when possible
+
+Return only the enhanced description, no additional commentary."""
+
+        description_response = co.chat(
+            model="command-r-03-2024", 
+            messages=[{"role": "user", "content": description_prompt}]
+        )
+        enhanced_description = description_response.message.content[0].text.strip()
+
+        return jsonify({
+            "success": True,
+            "title": enhanced_title,
+            "description": enhanced_description
+        })
+
+    except Exception as e:
+        print(f"Error enhancing ticket with Cohere: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=4000)
