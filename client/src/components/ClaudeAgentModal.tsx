@@ -56,7 +56,13 @@ const PROGRESS_STEPS = [
   { key: "creating_pr", label: "Creating Pull Request", description: "Committing changes and opening PR" },
 ];
 
-function ClaudeAgentModal({ isOpen, onClose, ticketData, repoName = "", baseBranch = "main" }: ClaudeAgentModalProps) {
+function ClaudeAgentModal({
+  isOpen,
+  onClose,
+  ticketData,
+  repoName = "ticketfairy/static-web",
+  baseBranch = "main",
+}: ClaudeAgentModalProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<AgentProgress[]>([]);
   const [currentStep, setCurrentStep] = useState(0);

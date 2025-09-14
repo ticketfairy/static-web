@@ -372,10 +372,10 @@ Begin by exploring the repository structure and understanding the codebase, then
             files_modified = []
             
             # Start the conversation with Claude
-            messages = [{"role": "user", "content": initial_prompt}]
+            messages = [{"role": "user", "content": [{"type": "text", "text": initial_prompt}]}]
             
             # Allow Claude to use tools iteratively
-            max_iterations = 10
+            max_iterations = 500
             iteration = 0
             
             while iteration < max_iterations:
@@ -383,12 +383,11 @@ Begin by exploring the repository structure and understanding the codebase, then
                 print(f"Claude iteration {iteration}")
                 
                 response = self.claude.messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=4000,
+                    model="claude-sonnet-4-0",
+                    max_tokens=20000,
                     messages=messages,
                     tools=self._get_file_tools()
                 )
-                
                 # Add Claude's response to messages
                 messages.append({"role": "assistant", "content": response.content})
                 
@@ -418,6 +417,7 @@ Begin by exploring the repository structure and understanding the codebase, then
                         })
                     
                     tool_results.append({
+                        "type": "tool_result",
                         "tool_use_id": tool_call.id,
                         "content": json.dumps(result)
                     })
@@ -436,6 +436,8 @@ Begin by exploring the repository structure and understanding the codebase, then
                 estimated_complexity="medium",
                 ticket_number=ticket_number
             )
+
+            print(f"Analysis: {analysis}")
             
             # Create code changes from files modified
             code_changes = []
@@ -458,6 +460,8 @@ Begin by exploring the repository structure and understanding the codebase, then
                     new_content=new_content,
                     change_description=file_info["change_description"]
                 ))
+
+            print(f"Code changes: {code_changes}")
             
             return analysis, code_changes
             
