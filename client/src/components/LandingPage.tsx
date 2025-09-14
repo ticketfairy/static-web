@@ -1,6 +1,6 @@
-import { Box, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Image, Tooltip } from "@chakra-ui/react";
-import { FiVideo, FiMic, FiUsers, FiClock, FiTrendingUp, FiSearch, FiHelpCircle } from "react-icons/fi";
+import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button } from "@chakra-ui/react";
 import TicketFairyButton from "./TicketFairyButton";
+import SparkleTrail from "./SparkleTrail";
 
 interface LandingPageProps {
   onNavigateToVideo: () => void;
@@ -12,6 +12,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
   return (
     <Box bg={bgColor} minH="100vh">
+      <SparkleTrail />
       {/* Header */}
       <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1200px" mx="auto">
         <Flex align="center" mr={5}>
@@ -20,116 +21,51 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
           </Heading>
         </Flex>
 
+        <Button
+          colorScheme="purple"
+          variant="solid"
+          size="md"
+          onClick={onNavigateToVideo}
+          _hover={{
+            transform: "translateY(-2px)",
+            boxShadow: "lg",
+          }}
+          transition="all 0.2s"
+        >
+          Ticket Fairy
+        </Button>
       </Flex>
+
+      {/* Demo Video Section */}
+      <Box w="full" py={16}>
+        <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
+            <Box
+              w="100%"
+              maxW="400px"
+              borderRadius="lg"
+              overflow="hidden"
+            >
+              <video
+                width="100%"
+                height="auto"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                poster=""
+                style={{ borderRadius: "8px" }}
+              >
+              <source src="/demo-video.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </Box>
+        </VStack>
+      </Box>
 
       {/* Hero Section */}
       <Box w="100vw">
-        <VStack spacing={8} textAlign="center" py={20} px={4} maxW="1200px" mx="auto">
-          {/* Images above header */}
-          <Flex 
-            direction={{ base: "column", md: "row" }} 
-            gap={20} 
-            align="center" 
-            justify="center"
-            mb={8}
-          >
-              <Tooltip 
-                label="✨ Integrate with Jira ✨" 
-                hasArrow 
-                placement="top"
-              bg="purple.500"
-              color="white"
-              fontSize="md"
-              fontWeight="bold"
-              borderRadius="md"
-              px={3}
-              py={2}
-            >
-              <Box
-                w={{ base: "200px", md: "250px" }}
-                h={{ base: "200px", md: "250px" }}
-                borderRadius="lg"
-                overflow="hidden"
-                boxShadow="lg"
-                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
-                cursor="pointer"
-                onClick={onNavigateToVideo}
-              >
-                <Image
-                  src="/image2.png"
-                  alt="The Rock as Ticket Fairy"
-                  w="100%"
-                  h="100%"
-                  objectFit="cover"
-                />
-              </Box>
-            </Tooltip>
-            
-            <Tooltip 
-              label="✨ Light as as a fairy ✨" 
-              hasArrow 
-              placement="top"
-              bg="purple.500"
-              color="white"
-              fontSize="md"
-              fontWeight="bold"
-              borderRadius="md"
-              px={3}
-              py={2}
-            >
-              <Box
-                w={{ base: "200px", md: "250px" }}
-                h={{ base: "200px", md: "250px" }}
-                borderRadius="lg"
-                overflow="hidden"
-                boxShadow="lg"
-                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
-                cursor="pointer"
-                onClick={onNavigateToVideo}
-              >
-                <Image
-                  src="/image1.png"
-                  alt="The Rock as Developer Ticket Fairy"
-                  w="100%"
-                  h="100%"
-                  objectFit="cover"
-                />
-              </Box>
-            </Tooltip>
-            
-            <Tooltip 
-              label="✨ Integrate with Linear ✨" 
-              hasArrow 
-              placement="top"
-              bg="purple.500"
-              color="white"
-              fontSize="md"
-              fontWeight="bold"
-              borderRadius="md"
-              px={3}
-              py={2}
-            >
-              <Box
-                w={{ base: "200px", md: "250px" }}
-                h={{ base: "200px", md: "250px" }}
-                borderRadius="lg"
-                overflow="hidden"
-                boxShadow="lg"
-                _hover={{ transform: "scale(1.05)", transition: "transform 0.2s" }}
-                cursor="pointer"
-                onClick={onNavigateToVideo}
-              >
-                <Image
-                  src="/image3.png"
-                  alt="The Rock as Light Blue Fairy"
-                  w="100%"
-                  h="100%"
-                  objectFit="cover"
-                />
-              </Box>
-            </Tooltip>
-          </Flex>
-
+        <VStack spacing={4} textAlign="center" py={12} px={4} maxW="1200px" mx="auto">
           <Heading 
             fontWeight={600} 
             fontSize={{ base: "3xl", sm: "4xl", md: "6xl" }} 
@@ -165,7 +101,21 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiSearch} w={10} h={10} color="red.400" />
+                  <Box
+                    w="120px"
+                    h="120px"
+                    borderRadius="lg"
+                    overflow="hidden"
+                    boxShadow="md"
+                  >
+                    <Image
+                      src="/image2.png"
+                      alt="The Rock as Ticket Fairy"
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                    />
+                  </Box>
                   <Text fontWeight="bold" fontSize="lg">
                     🦷🔍 Hidden Cavities
                   </Text>
@@ -177,7 +127,21 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiClock} w={10} h={10} color="red.400" />
+                  <Box
+                    w="120px"
+                    h="120px"
+                    borderRadius="lg"
+                    overflow="hidden"
+                    boxShadow="md"
+                  >
+                    <Image
+                      src="/image1.png"
+                      alt="The Rock as Developer Ticket Fairy"
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                    />
+                  </Box>
                   <Text fontWeight="bold" fontSize="lg">
                     ⏰🦷 Endless Root Canal
                   </Text>
@@ -189,7 +153,21 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiHelpCircle} w={10} h={10} color="red.400" />
+                  <Box
+                    w="120px"
+                    h="120px"
+                    borderRadius="lg"
+                    overflow="hidden"
+                    boxShadow="md"
+                  >
+                    <Image
+                      src="/image3.png"
+                      alt="The Rock as Light Blue Fairy"
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                    />
+                  </Box>
                   <Text fontWeight="bold" fontSize="lg">
                     😵🦷 Toothache Without a Cause
                   </Text>
@@ -201,89 +179,26 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
               <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
                 <VStack spacing={4}>
-                  <Icon as={FiTrendingUp} w={10} h={10} color="red.400" />
+                  <Box
+                    w="120px"
+                    h="120px"
+                    borderRadius="lg"
+                    overflow="hidden"
+                    boxShadow="md"
+                  >
+                    <Image
+                      src="/image2.png"
+                      alt="The Rock as Ticket Fairy"
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                    />
+                  </Box>
                   <Text fontWeight="bold" fontSize="lg">
                     🌱🦷 Wisdom Teeth Coming In
                   </Text>
                   <Text color={textColor} textAlign="center">
                     New team members experience growing pains as they slowly break through existing workflows
-                  </Text>
-                </VStack>
-              </Box>
-            </SimpleGrid>
-          </VStack>
-        </Box>
-
-        {/* Demo Video Section */}
-        <Box w="full" py={16}>
-          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
-            <Box
-              w="100%"
-              maxW="400px"
-              borderRadius="lg"
-              overflow="hidden"
-              boxShadow="xl"
-              _hover={{ transform: "scale(1.02)", transition: "transform 0.3s" }}
-            >
-              <video
-                width="100%"
-                height="auto"
-                controls
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                poster=""
-                style={{ borderRadius: "8px" }}
-              >
-                <source src="/demo-video.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </Box>
-          </VStack>
-        </Box>
-
-        {/* Solution Section */}
-        <Box w="full" py={16}>
-          <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
-            <Heading fontSize="3xl" color="purple.400">
-              Our Solution
-            </Heading>
-
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} w="full">
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
-                <VStack spacing={4}>
-                  <Icon as={FiVideo} w={10} h={10} color="purple.400" />
-                  <Text fontWeight="bold" fontSize="lg">
-                    Screen + Video Recording
-                  </Text>
-                  <Text color={textColor} textAlign="center">
-                    Capture both your screen and yourself talking for complete context
-                  </Text>
-                </VStack>
-              </Box>
-
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
-                <VStack spacing={4}>
-                  <Icon as={FiMic} w={10} h={10} color="purple.400" />
-                  <Text fontWeight="bold" fontSize="lg">
-                    AI-Powered Processing
-                  </Text>
-                  <Text color={textColor} textAlign="center">
-                    AI transforms your explanation into structured, ready-to-use tickets
-                  </Text>
-                </VStack>
-              </Box>
-
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
-                <VStack spacing={4}>
-                  <Icon as={FiUsers} w={10} h={10} color="purple.400" />
-                  <Text fontWeight="bold" fontSize="lg">
-                    Delightful Experience
-                  </Text>
-                  <Text color={textColor} textAlign="center">
-                    Human-centered UI that makes team collaboration easy and exciting
                   </Text>
                 </VStack>
               </Box>
