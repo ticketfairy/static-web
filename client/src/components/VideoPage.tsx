@@ -553,6 +553,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const handlePlayVideo = (video: VideoItem) => {
     setVideoToPlay(video);
     onVideoPlayerOpen();
+    
+    // Check if this video has a ticket and automatically show it
+    const videoTicket = videoTickets[video.id];
+    if (videoTicket) {
+      setSelectedTicket(videoTicket);
+      onTicketModalOpen();
+    }
   };
 
   // Helper function to confirm and delete video
@@ -1176,19 +1183,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               </Alert>
             )}
 
-            {/* Refresh button */}
-            {isS3ListConfigured && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={refreshVideoList}
-                isLoading={listState.isLoading}
-                loadingText="Refreshing..."
-                colorScheme="purple"
-                borderRadius="lg">
-                🔄 Refresh Videos
-              </Button>
-            )}
+
 
             {/* Empty State */}
             {allVideos.length === 0 && !listState.isLoading && (
@@ -1727,6 +1722,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         videoTitle={videoToPlay?.title || ""}
         videoBlob={videoToPlay?.blob}
         videoUrl={videoToPlay?.s3Url}
+        showTicket={isTicketModalOpen && selectedTicket}
+        ticketData={selectedTicket}
+        onOpenTicket={() => onTicketModalOpen()}
       />
 
       {/* Ticket Result Modal */}
@@ -1747,47 +1745,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           <ModalBody py={4}>
             {selectedTicket && (
               <VStack spacing={4} align="start">
-                {/* Enhancement Form - Collapsed by default */}
-                {selectedTicket.success && selectedTicket.ticket && (
-                  <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
-                    <VStack spacing={3} align="start">
-                      <HStack justify="space-between" w="full">
-                        <Text fontWeight="semibold" color="blue.700" fontSize="sm">
-                          🤖 AI Enhancement
-                        </Text>
-                        <Button
-                          colorScheme="blue"
-                          onClick={enhanceTicketWithContext}
-                          isLoading={isEnhancing}
-                          loadingText="Enhancing..."
-                          isDisabled={!enhancementContext.trim()}
-                          size="xs">
-                          Enhance
-                        </Button>
-                      </HStack>
-                      <Textarea
-                        placeholder="Add context to improve this ticket..."
-                        value={enhancementContext}
-                        onChange={(e) => setEnhancementContext(e.target.value)}
-                        resize="vertical"
-                        minH="60px"
-                        bg="white"
-                        borderColor="blue.300"
-                        fontSize="sm"
-                        _focus={{
-                          borderColor: "blue.500",
-                          boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
-                        }}
-                      />
-                      {enhancedTicket && (
-                        <Button variant="ghost" colorScheme="gray" onClick={resetEnhancement} size="xs">
-                          Reset to Original
-                        </Button>
-                      )}
-                    </VStack>
-                  </Box>
-                )}
-
                 {/* Ticket Display */}
                 {selectedTicket.success && selectedTicket.ticket ? (
                   <VStack spacing={2} align="start" w="full">
@@ -1827,7 +1784,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                 .then(() => {
                                   toast({
                                     title: "Copied!",
-                                    description: "Ticket content copied as markdown",
+                                    description: "Ticket content copied to clipboard",
                                     status: "success",
                                     duration: 2000,
                                     isClosable: true,
@@ -1873,19 +1830,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         </VStack>
 
                         <VStack spacing={1} align="start" w="full">
-                          <HStack justify="space-between" w="full">
-                            <Text fontWeight="semibold" color="gray.700" fontSize="sm">
-                              Description
-                            </Text>
-                            <Text fontSize="xs" color="gray.500">
-                              Markdown supported
-                            </Text>
-                          </HStack>
+                          <Text fontWeight="semibold" color="gray.700" fontSize="sm" mb={2}>
+                            Description
+                          </Text>
                           <Textarea
                             value={currentDescription}
                             onChange={(e) => handleDescriptionChange(e.target.value)}
                             onBlur={autoSaveChanges}
-                            placeholder="Enter ticket description... (supports **bold**, *italic*, `code`, etc.)"
+                            placeholder="Enter ticket description..."
                             borderColor="gray.300"
                             _focus={{
                               borderColor: "blue.500",
@@ -1918,6 +1870,47 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     <AlertIcon />
                     Analysis completed but no ticket data was returned.
                   </Alert>
+                )}
+
+                {/* AI Enhancement Form - Now below title and description */}
+                {selectedTicket && selectedTicket.success && selectedTicket.ticket && (
+                  <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
+                    <VStack spacing={3} align="start">
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="semibold" color="blue.700" fontSize="sm">
+                          🤖 AI Enhancement
+                        </Text>
+                        <Button
+                          colorScheme="blue"
+                          onClick={enhanceTicketWithContext}
+                          isLoading={isEnhancing}
+                          loadingText="Enhancing..."
+                          isDisabled={!enhancementContext.trim()}
+                          size="xs">
+                          Enhance
+                        </Button>
+                      </HStack>
+                      <Textarea
+                        placeholder="Add context to improve this ticket..."
+                        value={enhancementContext}
+                        onChange={(e) => setEnhancementContext(e.target.value)}
+                        resize="vertical"
+                        minH="60px"
+                        bg="white"
+                        borderColor="blue.300"
+                        fontSize="sm"
+                        _focus={{
+                          borderColor: "blue.500",
+                          boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                        }}
+                      />
+                      {enhancedTicket && (
+                        <Button variant="ghost" colorScheme="gray" onClick={resetEnhancement} size="xs">
+                          Reset to Original
+                        </Button>
+                      )}
+                    </VStack>
+                  </Box>
                 )}
               </VStack>
             )}

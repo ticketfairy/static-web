@@ -17,6 +17,12 @@ import {
   useColorModeValue,
   Alert,
   AlertIcon,
+  Button,
+  Input,
+  Textarea,
+  FormControl,
+  FormLabel,
+  Code,
 } from "@chakra-ui/react";
 import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -27,16 +33,19 @@ interface VideoPlayerModalProps {
   videoTitle: string;
   videoBlob?: Blob;
   videoUrl?: string;
+  showTicket?: boolean;
+  ticketData?: any;
+  onOpenTicket?: () => void;
 }
 
-export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, videoUrl }: VideoPlayerModalProps) => {
+export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, videoUrl, showTicket, ticketData, onOpenTicket }: VideoPlayerModalProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [videoSrc, setVideoSrc] = useState<string>("");
 
@@ -202,112 +211,297 @@ export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, video
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl" isCentered>
       <ModalOverlay bg="blackAlpha.800" />
-      <ModalContent bg={bgColor} maxW="90vw" maxH="90vh">
-        <ModalHeader>{videoTitle}</ModalHeader>
+      <ModalContent bg={bgColor} maxW="95vw" maxH="95vh">
+        <ModalHeader>
+          <HStack justify="space-between" w="full">
+            <Text>{videoTitle}</Text>
+            {showTicket && ticketData && onOpenTicket && (
+              <Button size="sm" colorScheme="purple" onClick={onOpenTicket}>
+                View Full Ticket
+              </Button>
+            )}
+          </HStack>
+        </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
-          <VStack spacing={4} align="stretch">
-            {error && (
-              <Alert status="error" borderRadius="md">
-                <AlertIcon />
-                <Text>{error}</Text>
-              </Alert>
-            )}
+          {showTicket && ticketData ? (
+            <HStack spacing={6} align="start" h="70vh">
+              {/* Left Side - Video Player */}
+              <Box flex="1" minW="400px">
+                <VStack spacing={4} align="stretch">
+                  {error && (
+                    <Alert status="error" borderRadius="md">
+                      <AlertIcon />
+                      <Text>{error}</Text>
+                    </Alert>
+                  )}
 
-            {/* Video Player */}
-            <Box
-              position="relative"
-              bg="black"
-              borderRadius="md"
-              overflow="hidden"
-              minH="400px"
-              display="flex"
-              alignItems="center"
-              justifyContent="center">
-              {videoSrc && (
-                <video
-                  ref={videoRef}
-                  src={videoSrc}
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    maxHeight: "70vh",
-                  }}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onTimeUpdate={handleTimeUpdate}
-                  onError={handleError}
-                  onEnded={handleEnded}
-                  playsInline
-                />
-              )}
+                  {/* Video Player */}
+                  <Box
+                    position="relative"
+                    bg="black"
+                    borderRadius="md"
+                    overflow="hidden"
+                    minH="300px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    {videoSrc && (
+                      <video
+                        ref={videoRef}
+                        src={videoSrc}
+                        style={{
+                          width: "100%",
+                          height: "auto",
+                          maxHeight: "60vh",
+                        }}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onTimeUpdate={handleTimeUpdate}
+                        onError={handleError}
+                        onEnded={handleEnded}
+                        playsInline
+                      />
+                    )}
 
-              {!videoSrc && !error && (
-                <Text color="white" fontSize="lg">
-                  Loading video...
-                </Text>
-              )}
-            </Box>
+                    {!videoSrc && !error && (
+                      <Text color="white" fontSize="lg">
+                        Loading video...
+                      </Text>
+                    )}
+                  </Box>
 
-            {/* Video Controls */}
-            {videoSrc && !error && (
-              <VStack spacing={3} align="stretch">
-                {/* Progress Bar */}
-                <Box px={2}>
-                  <Slider value={currentTime} max={duration || 100} onChange={handleSeek} focusThumbOnChange={false}>
-                    <SliderTrack bg="gray.200">
-                      <SliderFilledTrack bg="purple.500" />
-                    </SliderTrack>
-                    <SliderThumb boxSize={4} />
-                  </Slider>
-                </Box>
+                  {/* Video Controls */}
+                  {videoSrc && !error && (
+                    <VStack spacing={3} align="stretch">
+                      {/* Progress Bar */}
+                      <Box px={2}>
+                        <Slider value={currentTime} max={duration || 100} onChange={handleSeek} focusThumbOnChange={false}>
+                          <SliderTrack bg="gray.200">
+                            <SliderFilledTrack bg="purple.500" />
+                          </SliderTrack>
+                          <SliderThumb boxSize={4} />
+                        </Slider>
+                      </Box>
 
-                {/* Control Buttons and Time */}
-                <HStack justify="space-between" align="center">
-                  <HStack spacing={3}>
-                    <IconButton
-                      aria-label={isPlaying ? "Pause" : "Play"}
-                      icon={isPlaying ? <FiPause /> : <FiPlay />}
-                      onClick={togglePlay}
-                      colorScheme="purple"
-                      size="md"
-                    />
+                      {/* Control Buttons and Time */}
+                      <HStack justify="space-between" align="center">
+                        <HStack spacing={3}>
+                          <IconButton
+                            aria-label={isPlaying ? "Pause" : "Play"}
+                            icon={isPlaying ? <FiPause /> : <FiPlay />}
+                            onClick={togglePlay}
+                            colorScheme="purple"
+                            size="md"
+                          />
 
-                    <Text fontSize="sm" minW="80px">
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </Text>
-                  </HStack>
+                          <Text fontSize="sm" minW="80px">
+                            {formatTime(currentTime)} / {formatTime(duration)}
+                          </Text>
+                        </HStack>
 
-                  <HStack spacing={3} align="center">
-                    {/* Volume Control */}
-                    <IconButton
-                      aria-label={isMuted ? "Unmute" : "Mute"}
-                      icon={isMuted ? <FiVolumeX /> : <FiVolume2 />}
-                      onClick={toggleMute}
-                      variant="ghost"
-                      size="sm"
-                    />
+                        <HStack spacing={3} align="center">
+                          {/* Volume Control */}
+                          <IconButton
+                            aria-label={isMuted ? "Unmute" : "Mute"}
+                            icon={isMuted ? <FiVolumeX /> : <FiVolume2 />}
+                            onClick={toggleMute}
+                            variant="ghost"
+                            size="sm"
+                          />
 
-                    <Box w="100px">
-                      <Slider value={isMuted ? 0 : volume} max={1} step={0.1} onChange={handleVolumeChange} focusThumbOnChange={false}>
-                        <SliderTrack bg="gray.200">
-                          <SliderFilledTrack bg="purple.500" />
-                        </SliderTrack>
-                        <SliderThumb boxSize={3} />
-                      </Slider>
+                          <Box w="100px">
+                            <Slider value={isMuted ? 0 : volume} max={1} step={0.1} onChange={handleVolumeChange} focusThumbOnChange={false}>
+                              <SliderTrack bg="gray.200">
+                                <SliderFilledTrack bg="purple.500" />
+                              </SliderTrack>
+                              <SliderThumb boxSize={3} />
+                            </Slider>
+                          </Box>
+
+                          {/* Fullscreen Button */}
+                          <IconButton aria-label="Fullscreen" icon={<FiMaximize2 />} onClick={toggleFullscreen} variant="ghost" size="sm" />
+                        </HStack>
+                      </HStack>
+
+                      {/* Keyboard shortcuts hint */}
+                      <Text fontSize="xs" color="gray.500" textAlign="center">
+                        Keyboard shortcuts: Space (play/pause), ← → (seek), M (mute), F (fullscreen)
+                      </Text>
+                    </VStack>
+                  )}
+                </VStack>
+              </Box>
+
+              {/* Right Side - Ticket Display */}
+              <Box flex="1" minW="300px" maxH="70vh" overflowY="auto">
+                <VStack spacing={4} align="start" w="full">
+                  <Text fontSize="lg" fontWeight="bold" color="purple.600">
+                    🎫 Generated Ticket
+                  </Text>
+                  
+                  {ticketData.success && ticketData.ticket ? (
+                    <VStack spacing={4} align="start" w="full">
+                      {/* Title */}
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="semibold">Title</FormLabel>
+                        <Input
+                          value={ticketData.ticket.title}
+                          readOnly
+                          bg="gray.50"
+                          fontSize="sm"
+                        />
+                      </FormControl>
+
+                      {/* Description */}
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="semibold">Description</FormLabel>
+                        <Textarea
+                          value={ticketData.ticket.description}
+                          readOnly
+                          bg="gray.50"
+                          fontSize="sm"
+                          minH="200px"
+                          resize="vertical"
+                        />
+                      </FormControl>
+
+                      {/* Video Info */}
+                      <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
+                        <Text fontSize="sm" color="blue.700" fontWeight="medium" mb={2}>
+                          📹 Video Reference
+                        </Text>
+                        <Text fontSize="xs" color="blue.600">
+                          Video ID: {ticketData.video_id}
+                        </Text>
+                        <Text fontSize="xs" color="blue.600">
+                          Index ID: {ticketData.index_id}
+                        </Text>
+                      </Box>
+                    </VStack>
+                  ) : ticketData.raw_response ? (
+                    <Box w="full">
+                      <Text fontSize="md" fontWeight="bold" mb={2}>
+                        Raw Analysis Result:
+                      </Text>
+                      <Code p={3} w="full" whiteSpace="pre-wrap" fontSize="sm" bg="gray.50">
+                        {ticketData.raw_response}
+                      </Code>
                     </Box>
+                  ) : (
+                    <Alert status="warning">
+                      <AlertIcon />
+                      <Text fontSize="sm">Analysis completed but no ticket data was returned.</Text>
+                    </Alert>
+                  )}
+                </VStack>
+              </Box>
+            </HStack>
+          ) : (
+            <VStack spacing={4} align="stretch">
+              {error && (
+                <Alert status="error" borderRadius="md">
+                  <AlertIcon />
+                  <Text>{error}</Text>
+                </Alert>
+              )}
 
-                    {/* Fullscreen Button */}
-                    <IconButton aria-label="Fullscreen" icon={<FiMaximize2 />} onClick={toggleFullscreen} variant="ghost" size="sm" />
+              {/* Video Player - Full Width */}
+              <Box
+                position="relative"
+                bg="black"
+                borderRadius="md"
+                overflow="hidden"
+                minH="400px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                {videoSrc && (
+                  <video
+                    ref={videoRef}
+                    src={videoSrc}
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      maxHeight: "70vh",
+                    }}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onTimeUpdate={handleTimeUpdate}
+                    onError={handleError}
+                    onEnded={handleEnded}
+                    playsInline
+                  />
+                )}
+
+                {!videoSrc && !error && (
+                  <Text color="white" fontSize="lg">
+                    Loading video...
+                  </Text>
+                )}
+              </Box>
+
+              {/* Video Controls */}
+              {videoSrc && !error && (
+                <VStack spacing={3} align="stretch">
+                  {/* Progress Bar */}
+                  <Box px={2}>
+                    <Slider value={currentTime} max={duration || 100} onChange={handleSeek} focusThumbOnChange={false}>
+                      <SliderTrack bg="gray.200">
+                        <SliderFilledTrack bg="purple.500" />
+                      </SliderTrack>
+                      <SliderThumb boxSize={4} />
+                    </Slider>
+                  </Box>
+
+                  {/* Control Buttons and Time */}
+                  <HStack justify="space-between" align="center">
+                    <HStack spacing={3}>
+                      <IconButton
+                        aria-label={isPlaying ? "Pause" : "Play"}
+                        icon={isPlaying ? <FiPause /> : <FiPlay />}
+                        onClick={togglePlay}
+                        colorScheme="purple"
+                        size="md"
+                      />
+
+                      <Text fontSize="sm" minW="80px">
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                      </Text>
+                    </HStack>
+
+                    <HStack spacing={3} align="center">
+                      {/* Volume Control */}
+                      <IconButton
+                        aria-label={isMuted ? "Unmute" : "Mute"}
+                        icon={isMuted ? <FiVolumeX /> : <FiVolume2 />}
+                        onClick={toggleMute}
+                        variant="ghost"
+                        size="sm"
+                      />
+
+                      <Box w="100px">
+                        <Slider value={isMuted ? 0 : volume} max={1} step={0.1} onChange={handleVolumeChange} focusThumbOnChange={false}>
+                          <SliderTrack bg="gray.200">
+                            <SliderFilledTrack bg="purple.500" />
+                          </SliderTrack>
+                          <SliderThumb boxSize={3} />
+                        </Slider>
+                      </Box>
+
+                      {/* Fullscreen Button */}
+                      <IconButton aria-label="Fullscreen" icon={<FiMaximize2 />} onClick={toggleFullscreen} variant="ghost" size="sm" />
+                    </HStack>
                   </HStack>
-                </HStack>
 
-                {/* Keyboard shortcuts hint */}
-                <Text fontSize="xs" color="gray.500" textAlign="center">
-                  Keyboard shortcuts: Space (play/pause), ← → (seek), M (mute), F (fullscreen)
-                </Text>
-              </VStack>
-            )}
-          </VStack>
+                  {/* Keyboard shortcuts hint */}
+                  <Text fontSize="xs" color="gray.500" textAlign="center">
+                    Keyboard shortcuts: Space (play/pause), ← → (seek), M (mute), F (fullscreen)
+                  </Text>
+                </VStack>
+              )}
+            </VStack>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>

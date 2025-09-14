@@ -1,8 +1,6 @@
 import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Badge, Card, CardBody, CardHeader, HStack, Tag, TagLabel } from "@chakra-ui/react";
 import { FiVideo, FiCalendar, FiClock, FiTrash2, FiPlay, FiCopy } from "react-icons/fi";
 import { useTickets } from "../hooks/useTickets";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 interface MyTicketsPageProps {
   onNavigateToLanding: () => void;
@@ -117,24 +115,38 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
                       )}
 
                       <Box fontSize="sm" color={textColor} maxH="120px" overflowY="auto">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ children }) => <Text mb={2}>{children}</Text>,
-                            ul: ({ children }) => <Box as="ul" pl={4} mb={2}>{children}</Box>,
-                            ol: ({ children }) => <Box as="ol" pl={4} mb={2}>{children}</Box>,
-                            li: ({ children }) => <Box as="li" mb={1}>{children}</Box>,
-                            code: ({ children }) => (
-                              <Box as="code" bg="gray.100" px={1} py={0.5} borderRadius="sm" fontSize="xs">
-                                {children}
-                              </Box>
-                            ),
-                            strong: ({ children }) => <Text as="strong" fontWeight="bold">{children}</Text>,
-                            em: ({ children }) => <Text as="em" fontStyle="italic">{children}</Text>,
-                          }}
-                        >
-                          {ticket.description}
-                        </ReactMarkdown>
+                        <Box fontSize="sm" color={textColor}>
+                          {ticket.description.split('\n').map((line, index) => {
+                            // Handle structured format like "**What:** description"
+                            if (line.includes('**What:**') || line.includes('**Why:**') || line.includes('**How:**')) {
+                              const parts = line.split('**');
+                              const label = parts[1]?.replace(':', '');
+                              const description = parts[2]?.trim();
+                              
+                              return (
+                                <Box key={index} mb={3}>
+                                  <Text fontWeight="semibold" color="purple.600" fontSize="sm" mb={1}>
+                                    {label}:
+                                  </Text>
+                                  <Text fontSize="sm" color={textColor} pl={2}>
+                                    {description}
+                                  </Text>
+                                </Box>
+                              );
+                            }
+                            
+                            // Handle regular lines
+                            if (line.trim()) {
+                              return (
+                                <Text key={index} mb={2} fontSize="sm" color={textColor}>
+                                  {line}
+                                </Text>
+                              );
+                            }
+                            
+                            return null;
+                          })}
+                        </Box>
                       </Box>
 
                       {ticket.estimatedTime && (
