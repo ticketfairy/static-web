@@ -19,7 +19,7 @@ export function ReadyToRecordModal({ isOpen, onStartRecording }: ReadyToRecordMo
               <Text fontSize="2xl" fontWeight="bold">
                 You're ready to record!
               </Text>
-              <Text fontSize="sm" color={textColor} textAlign="center">
+              <Text fontSize="sm" color={textColor} textAlign="left">
                 The tab you selected to record will be captured once you start recording.
               </Text>
             </VStack>

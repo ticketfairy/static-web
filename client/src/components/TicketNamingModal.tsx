@@ -76,7 +76,7 @@ export function TicketNamingModal({
 
         <ModalBody pb={6}>
           <VStack spacing={6}>
-            <Text color="gray.600" textAlign="center">
+            <Text color="gray.600" textAlign="left">
               Give your ticket a descriptive name so you can easily identify it later
             </Text>
 
@@ -98,7 +98,7 @@ export function TicketNamingModal({
               borderRadius="md"
               w="full"
             >
-              <Text fontSize="sm" color="purple.700" textAlign="center">
+              <Text fontSize="sm" color="purple.700" textAlign="left">
                 💡 Tip: Use descriptive names like "Fix login bug" or "Add user dashboard feature"
               </Text>
             </Box>

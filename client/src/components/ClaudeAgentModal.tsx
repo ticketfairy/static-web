@@ -227,7 +227,7 @@ function ClaudeAgentModal({
                 Claude Code Agent
               </Text>
             </HStack>
-            <Text fontSize="sm" color="gray.600" textAlign="center" fontWeight="normal">
+            <Text fontSize="sm" color="gray.600" textAlign="left" fontWeight="normal">
               Generate a GitHub PR from your ticket using AI
             </Text>
           </VStack>

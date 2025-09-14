@@ -100,7 +100,7 @@ export function FloatingRecordingControls({
             fontWeight="mono"
             fontFamily="'Courier New', monospace"
             minWidth="60px"
-            textAlign="center"
+            textAlign="left"
           >
             {formatTime(recordingTime)}
           </Text>

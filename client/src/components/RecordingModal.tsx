@@ -123,7 +123,7 @@ export function RecordingModal({
       <ModalCloseButton />
       <ModalBody pb={6}>
         <VStack spacing={6}>
-          <Text color={textColor} textAlign="center">
+          <Text color={textColor} textAlign="left">
             To create your screen recording, we need access to your screen, camera, and microphone.
           </Text>
 
@@ -159,7 +159,7 @@ export function RecordingModal({
             Grant Permissions & Start Recording
           </Button>
 
-          <Text fontSize="sm" color={textColor} textAlign="center">
+          <Text fontSize="sm" color={textColor} textAlign="left">
             Your browser will show permission prompts for each access type.
             Please allow all permissions to continue.
           </Text>
@@ -173,7 +173,7 @@ export function RecordingModal({
       <ModalHeader>Get Ready!</ModalHeader>
       <ModalBody pb={6}>
         <VStack spacing={8}>
-          <Text color={textColor} textAlign="center" fontSize="lg">
+          <Text color={textColor} textAlign="left" fontSize="lg">
             Recording will start in:
           </Text>
 
@@ -192,7 +192,7 @@ export function RecordingModal({
             <Text fontSize="lg" fontWeight="semibold">
               Recording will begin automatically
             </Text>
-            <Text color={textColor} textAlign="center">
+            <Text color={textColor} textAlign="left">
               Position yourself and your screen how you'd like them to appear in the recording.
             </Text>
           </VStack>
@@ -221,7 +221,7 @@ export function RecordingModal({
           </Alert>
 
           <VStack spacing={4} w="full">
-            <Text color={textColor} textAlign="center">
+            <Text color={textColor} textAlign="left">
               Common solutions:
             </Text>
 

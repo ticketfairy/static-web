@@ -241,7 +241,7 @@ export function VideoPreviewModal({
                   {hasConverted ? 'Processing...' : 'Convert to Ticket with AI'}
                 </Button>
 
-                <Text fontSize="sm" color="gray.500" textAlign="center">
+                <Text fontSize="sm" color="gray.500" textAlign="left">
                   AI will analyze your recording and create a structured ticket
                 </Text>
               </VStack>
