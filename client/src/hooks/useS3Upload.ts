@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { s3Uploader, S3VideoUploader } from "../utils/s3Upload";
-import type { S3UploadResult, S3ListResult, S3VideoMetadata, S3DeleteResult } from "../utils/s3Upload";
+import type { S3UploadResult, S3ListResult, S3VideoMetadata, S3DeleteResult, TicketData, S3TicketResult } from "../utils/s3Upload";
 
 export interface UploadState {
   isUploading: boolean;
@@ -26,6 +26,13 @@ export interface UseS3VideoListReturn {
   listState: VideoListState;
   refreshVideoList: () => Promise<void>;
   deleteVideo: (key: string) => Promise<S3DeleteResult>;
+  isConfigured: boolean;
+}
+
+export interface UseS3TicketReturn {
+  saveTicket: (videoFilename: string, ticketData: Omit<TicketData, "createdAt" | "updatedAt">) => Promise<S3UploadResult>;
+  loadTicket: (videoFilename: string) => Promise<S3TicketResult>;
+  deleteTicket: (videoFilename: string) => Promise<S3DeleteResult>;
   isConfigured: boolean;
 }
 
@@ -189,6 +196,83 @@ export const useS3VideoList = (customUploader?: S3VideoUploader): UseS3VideoList
     listState,
     refreshVideoList,
     deleteVideo,
+    isConfigured,
+  };
+};
+
+export const useS3Ticket = (customUploader?: S3VideoUploader): UseS3TicketReturn => {
+  const uploader = customUploader || s3Uploader;
+
+  // Check if uploader is properly configured
+  const isConfigured = Boolean(uploader);
+
+  const saveTicket = useCallback(
+    async (videoFilename: string, ticketData: Omit<TicketData, "createdAt" | "updatedAt">): Promise<S3UploadResult> => {
+      if (!isConfigured) {
+        return {
+          success: false,
+          error: "S3 not configured. Please set up AWS credentials.",
+        };
+      }
+
+      try {
+        return await uploader.saveTicketData(videoFilename, ticketData);
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save ticket",
+        };
+      }
+    },
+    [uploader, isConfigured]
+  );
+
+  const loadTicket = useCallback(
+    async (videoFilename: string): Promise<S3TicketResult> => {
+      if (!isConfigured) {
+        return {
+          success: false,
+          error: "S3 not configured. Please set up AWS credentials.",
+        };
+      }
+
+      try {
+        return await uploader.loadTicketData(videoFilename);
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to load ticket",
+        };
+      }
+    },
+    [uploader, isConfigured]
+  );
+
+  const deleteTicket = useCallback(
+    async (videoFilename: string): Promise<S3DeleteResult> => {
+      if (!isConfigured) {
+        return {
+          success: false,
+          error: "S3 not configured. Please set up AWS credentials.",
+        };
+      }
+
+      try {
+        return await uploader.deleteTicketData(videoFilename);
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to delete ticket",
+        };
+      }
+    },
+    [uploader, isConfigured]
+  );
+
+  return {
+    saveTicket,
+    loadTicket,
+    deleteTicket,
     isConfigured,
   };
 };
