@@ -1,5 +1,6 @@
-import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button } from "@chakra-ui/react";
+import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button, HStack } from "@chakra-ui/react";
 import SparkleTrail from "./SparkleTrail";
+import DarkModeToggle from "./DarkModeToggle";
 
 interface LandingPageProps {
   onNavigateToVideo: () => void;
@@ -8,6 +9,8 @@ interface LandingPageProps {
 function LandingPage({ onNavigateToVideo }: LandingPageProps) {
   const bgColor = useColorModeValue("white", "gray.900");
   const textColor = useColorModeValue("gray.600", "gray.300");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const cardBgColor = useColorModeValue("white", "gray.800");
 
   return (
     <Box bg={bgColor} minH="100vh">
@@ -20,22 +23,25 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
           </Heading>
         </Flex>
 
-        <Button
-          colorScheme="purple"
-          variant="solid"
-          size="md"
-          onClick={onNavigateToVideo}
-          _hover={{
-            transform: "translateY(-2px)",
-            boxShadow: "lg",
-          }}
-          transition="all 0.2s"
-          fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif"
-          fontSize="1rem"
-          fontWeight="500"
-        >
-          Ticket Fairy
-        </Button>
+        <HStack spacing={4}>
+          <Button
+            colorScheme="purple"
+            variant="solid"
+            size="md"
+            onClick={onNavigateToVideo}
+            _hover={{
+              transform: "translateY(-2px)",
+              boxShadow: "lg",
+            }}
+            transition="all 0.2s"
+            fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+            fontSize="1rem"
+            fontWeight="500"
+          >
+            Ticket Fairy
+          </Button>
+          <DarkModeToggle />
+        </HStack>
       </Flex>
 
       {/* Demo Video Section */}
@@ -93,7 +99,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
         </VStack>
 
         <Box height={10} />
-        <Box mx="auto" maxW="1200px" borderTop="1px solid" borderColor="gray.200" />
+        <Box mx="auto" maxW="1200px" borderTop="1px solid" borderColor={borderColor} />
         <Box height={20} />
 
         {/* Problem Section */}
@@ -104,7 +110,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
             </Heading>
 
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
+              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg" bg={cardBgColor} borderColor={borderColor}>
                 <VStack spacing={4}>
                   <Box
                     w="120px"
@@ -129,7 +135,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                 </VStack>
               </Box>
 
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
+              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg" bg={cardBgColor} borderColor={borderColor}>
                 <VStack spacing={4}>
                   <Box
                     w="120px"
@@ -154,7 +160,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                 </VStack>
               </Box>
 
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
+              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg" bg={cardBgColor} borderColor={borderColor}>
                 <VStack spacing={4}>
                   <Box
                     w="120px"
@@ -179,7 +185,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                 </VStack>
               </Box>
 
-              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg">
+              <Box p={6} shadow="md" borderWidth="1px" borderRadius="lg" bg={cardBgColor} borderColor={borderColor}>
                 <VStack spacing={4}>
                   <Box
                     w="120px"

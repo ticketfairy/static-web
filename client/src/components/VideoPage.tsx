@@ -29,6 +29,7 @@ import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, Fi
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import SparkleTrail from "./SparkleTrail";
+import DarkModeToggle from "./DarkModeToggle";
 
 // API function to call Flask analyze_video endpoint
 const analyzeVideo = async (videoUrl: string, userNotes: string) => {
@@ -79,6 +80,9 @@ interface VideoPageProps {
 
 function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLanding }: VideoPageProps) {
   const bgColor = useColorModeValue("white", "gray.900");
+  const textColor = useColorModeValue("gray.600", "gray.300");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const cardBgColor = useColorModeValue("white", "gray.800");
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isRecordingModalOpen, onOpen: onRecordingModalOpen, onClose: onRecordingModalClose } = useDisclosure();
   const { isOpen: isVideoPreviewOpen, onClose: onVideoPreviewClose } = useDisclosure();
@@ -1118,14 +1122,19 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
-      {onNavigateToLanding && (
-        <Box p={4}>
-          <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
-            Back to Home
-          </Button>
-        </Box>
-      )}
+      {/* Header with Back Button and Dark Mode Toggle */}
+      <Box p={4}>
+        <HStack justify="space-between" w="full">
+          {onNavigateToLanding ? (
+            <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
+              Back to Home
+            </Button>
+          ) : (
+            <Box /> // Empty spacer when no back button
+          )}
+          <DarkModeToggle />
+        </HStack>
+      </Box>
 
       {/* Video Page Content */}
       <VStack spacing={12} textAlign="center" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">
@@ -1575,7 +1584,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       {/* Video Upload Modal - Enhanced */}
       <Modal isOpen={isOpen} onClose={onClose} size="lg">
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-        <ModalContent mx={4} bg="white" borderRadius="xl" shadow="2xl">
+        <ModalContent mx={4} bg={cardBgColor} borderRadius="xl" shadow="2xl">
           <ModalHeader pb={2}>
             <VStack spacing={2} align="center">
               <Text fontSize="2xl" fontWeight="bold" color="purple.600">
@@ -1752,7 +1761,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       {/* Delete Confirmation Modal */}
       <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose} size="md">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent bg={cardBgColor}>
           <ModalHeader>Delete Video</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
