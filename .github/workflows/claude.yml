@@ -55,7 +55,7 @@ jobs:
       - name: Auto-create PR for Claude branch
         if: success()
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           git fetch --all --prune

@@ -567,7 +567,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     // Helper function to generate unique filename
     const generateUniqueFilename = (baseFilename: string): string => {
         // Get all existing video titles from both local and S3 videos
-        const existingTitles = allVideos.map((video) => video.title);
+        const existingTitles = allVideos.map((video) => video.filename);
 
         // If the base filename doesn't exist, return it as is
         if (!existingTitles.includes(baseFilename)) {
@@ -592,7 +592,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     };
 
     // Helper function to add new video to collection
-    const addVideoToCollection = async (blob: Blob, title?: string) => {
+    const addVideoToCollection = async (blob: Blob, title = "Screen Recording.mov") => {
         const duration = await getVideoDuration(blob);
         const timestamp = new Date();
 
