@@ -97,7 +97,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     const [analyzingVideos, setAnalyzingVideos] = useState<Set<string>>(new Set());
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const { isOpen: isTicketResultModalOpen, onOpen: onTicketResultModalOpen, onClose: onTicketResultModalClose } = useDisclosure();
-    const [enhancementContext, setEnhancementContext] = useState("");
+    const [enhancementContexts, setEnhancementContexts] = useState<Record<string, string>>({});
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [enhancedTicket, setEnhancedTicket] = useState<any>(null);
     const [currentTitle, setCurrentTitle] = useState("");
@@ -797,8 +797,11 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     };
 
     // Function to enhance ticket with Cohere
-    const enhanceTicketWithContext = async () => {
-        if (!selectedTicket || !selectedTicket.success || !selectedTicket.ticket || !enhancementContext.trim()) {
+    const enhanceTicketWithContext = async (videoId?: string) => {
+        const currentVideoId = videoId || (videoToPlay?.id);
+        const currentEnhancementContext = currentVideoId ? enhancementContexts[currentVideoId] || "" : "";
+        
+        if (!selectedTicket || !selectedTicket.success || !selectedTicket.ticket || !currentEnhancementContext.trim()) {
             toast({
                 title: "Enhancement Failed",
                 description: "Please provide context to enhance the ticket",
@@ -820,7 +823,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 body: JSON.stringify({
                     title: selectedTicket.ticket.title,
                     description: selectedTicket.ticket.description,
-                    context: enhancementContext,
+                    context: currentEnhancementContext,
                 }),
             });
 
@@ -867,9 +870,26 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     };
 
     // Function to reset enhancement
-    const resetEnhancement = () => {
+    const resetEnhancement = (videoId?: string) => {
         setEnhancedTicket(null);
-        setEnhancementContext("");
+        const currentVideoId = videoId || (videoToPlay?.id);
+        if (currentVideoId) {
+            setEnhancementContexts(prev => ({
+                ...prev,
+                [currentVideoId]: ""
+            }));
+        }
+    };
+
+    // Helper function to handle enhancement context change
+    const handleEnhancementContextChange = (value: string, videoId?: string) => {
+        const currentVideoId = videoId || (videoToPlay?.id);
+        if (currentVideoId) {
+            setEnhancementContexts(prev => ({
+                ...prev,
+                [currentVideoId]: value
+            }));
+        }
     };
 
     // Initialize current values when ticket changes
@@ -1342,54 +1362,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                 <Box px={6} pb={6} w="full">
                                                     <VStack spacing={3}>
                                                         {/* Primary Actions */}
-                                                        <HStack spacing={2} w="full">
-                                                            <Button
-                                                                size="sm"
-                                                                colorScheme="purple"
-                                                                variant="outline"
-                                                                flex={1}
-                                                                onClick={() => handlePlayVideo(video)}
-                                                                isDisabled={!video.blob && !video.s3Url}
-                                                                leftIcon={<Icon as={FiPlay} />}
-                                                                borderRadius="lg"
-                                                            >
-                                                                Play
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                colorScheme="purple"
-                                                                variant="outline"
-                                                                flex={1}
-                                                                onClick={() => {
-                                                                    const shareableLink = video.s3Url || (video.blob ? `https://ticketfairy.app/video/${video.id}` : "Link not available");
-
-                                                                    navigator.clipboard
-                                                                        .writeText(shareableLink)
-                                                                        .then(() => {
-                                                                            toast({
-                                                                                title: "Link Copied!",
-                                                                                description: video.s3Url ? "Cloud video link copied to clipboard" : "Video link copied to clipboard",
-                                                                                status: "success",
-                                                                                duration: 2000,
-                                                                                isClosable: true,
-                                                                            });
-                                                                        })
-                                                                        .catch(() => {
-                                                                            toast({
-                                                                                title: "Copy Failed",
-                                                                                description: "Could not copy link to clipboard",
-                                                                                status: "error",
-                                                                                duration: 3000,
-                                                                                isClosable: true,
-                                                                            });
-                                                                        });
-                                                                }}
-                                                                isDisabled={!video.blob && !video.s3Url}
-                                                                leftIcon={<Icon as={FiCopy} />}
-                                                                borderRadius="lg"
-                                                            >
-                                                                Share
-                                                            </Button>
+                                                        <HStack spacing={2} w="full" justify="flex-end">
                                                             <Button size="sm" colorScheme="red" variant="outline" onClick={() => handleDeleteVideo(video)} title="Delete video" borderRadius="lg">
                                                                 <Icon as={FiTrash2} />
                                                             </Button>
@@ -1400,10 +1373,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                             size="md"
                                                             w="full"
                                                             onClick={() => {
+                                                                // Open video player modal (side-by-side layout)
+                                                                setVideoToPlay(video);
+                                                                onVideoPlayerOpen();
+
                                                                 const ticket = videoTickets[video.id];
                                                                 if (ticket) {
                                                                     setSelectedTicket(ticket);
-                                                                    onTicketResultModalOpen();
                                                                 } else if (video.s3Url && !analyzingVideos.has(video.id)) {
                                                                     analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
                                                                 } else {
@@ -1659,9 +1635,15 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 videoTitle={videoToPlay?.title || ""}
                 videoBlob={videoToPlay?.blob}
                 videoUrl={videoToPlay?.s3Url}
-                showTicket={isTicketModalOpen && selectedTicket}
+                showTicket={selectedTicket}
                 ticketData={selectedTicket}
                 onOpenTicket={() => onTicketModalOpen()}
+                enhancementContext={videoToPlay?.id ? enhancementContexts[videoToPlay.id] || "" : ""}
+                onEnhancementContextChange={(value) => handleEnhancementContextChange(value, videoToPlay?.id)}
+                onEnhanceTicket={() => enhanceTicketWithContext(videoToPlay?.id)}
+                isEnhancing={isEnhancing}
+                enhancedTicket={enhancedTicket}
+                onResetEnhancement={resetEnhancement}
             />
 
             {/* Ticket Result Modal */}
@@ -1812,46 +1794,44 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                 )}
 
                                 {/* AI Enhancement Form - Now below title and description */}
-                                {selectedTicket && selectedTicket.success && selectedTicket.ticket && (
-                                    <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
-                                        <VStack spacing={3} align="start">
-                                            <HStack justify="space-between" w="full">
-                                                <Text fontWeight="semibold" color="blue.700" fontSize="sm">
-                                                    🤖 AI Enhancement
-                                                </Text>
-                                                <Button
-                                                    colorScheme="blue"
-                                                    onClick={enhanceTicketWithContext}
-                                                    isLoading={isEnhancing}
-                                                    loadingText="Enhancing..."
-                                                    isDisabled={!enhancementContext.trim()}
-                                                    size="xs"
-                                                >
-                                                    Enhance
-                                                </Button>
-                                            </HStack>
-                                            <Textarea
-                                                placeholder="Add context to improve this ticket..."
-                                                value={enhancementContext}
-                                                onChange={(e) => setEnhancementContext(e.target.value)}
-                                                resize="vertical"
-                                                minH="60px"
-                                                bg="white"
-                                                borderColor="blue.300"
-                                                fontSize="sm"
-                                                _focus={{
-                                                    borderColor: "blue.500",
-                                                    boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
-                                                }}
-                                            />
-                                            {enhancedTicket && (
-                                                <Button variant="ghost" colorScheme="gray" onClick={resetEnhancement} size="xs">
-                                                    Reset to Original
-                                                </Button>
-                                            )}
-                                        </VStack>
-                                    </Box>
-                                )}
+                                <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
+                                    <VStack spacing={3} align="start">
+                                        <HStack justify="space-between" w="full">
+                                            <Text fontWeight="semibold" color="blue.700" fontSize="sm">
+                                                🤖 AI Enhancement
+                                            </Text>
+                                            <Button
+                                                colorScheme="blue"
+                                                onClick={() => enhanceTicketWithContext()}
+                                                isLoading={isEnhancing}
+                                                loadingText="Enhancing..."
+                                                isDisabled={!enhancementContexts[selectedTicket?.video_id || '']?.trim()}
+                                                size="xs"
+                                            >
+                                                Enhance
+                                            </Button>
+                                        </HStack>
+                                        <Textarea
+                                            placeholder="Add context to improve this ticket..."
+                                            value={enhancementContexts[selectedTicket?.video_id || ''] || ""}
+                                            onChange={(e) => handleEnhancementContextChange(e.target.value, selectedTicket?.video_id)}
+                                            resize="vertical"
+                                            minH="60px"
+                                            bg="white"
+                                            borderColor="blue.300"
+                                            fontSize="sm"
+                                            _focus={{
+                                                borderColor: "blue.500",
+                                                boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                                            }}
+                                        />
+                                        {enhancedTicket && (
+                                            <Button variant="ghost" colorScheme="gray" onClick={() => resetEnhancement(selectedTicket?.video_id)} size="xs">
+                                                Reset to Original
+                                            </Button>
+                                        )}
+                                    </VStack>
+                                </Box>
                             </VStack>
                         )}
                     </ModalBody>

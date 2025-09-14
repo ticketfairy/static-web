@@ -36,9 +36,30 @@ interface VideoPlayerModalProps {
   showTicket?: boolean;
   ticketData?: any;
   onOpenTicket?: () => void;
+  enhancementContext?: string;
+  onEnhancementContextChange?: (value: string) => void;
+  onEnhanceTicket?: () => void;
+  isEnhancing?: boolean;
+  enhancedTicket?: any;
+  onResetEnhancement?: () => void;
 }
 
-export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, videoUrl, showTicket, ticketData, onOpenTicket }: VideoPlayerModalProps) => {
+export const VideoPlayerModal = ({ 
+  isOpen, 
+  onClose, 
+  videoTitle, 
+  videoBlob, 
+  videoUrl, 
+  showTicket, 
+  ticketData, 
+  onOpenTicket,
+  enhancementContext,
+  onEnhancementContextChange,
+  onEnhanceTicket,
+  isEnhancing,
+  enhancedTicket,
+  onResetEnhancement
+}: VideoPlayerModalProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -171,42 +192,6 @@ export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, video
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-
-      switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          togglePlay();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          if (videoRef.current) {
-            videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
-          }
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          if (videoRef.current) {
-            videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 10);
-          }
-          break;
-        case "KeyM":
-          e.preventDefault();
-          toggleMute();
-          break;
-        case "KeyF":
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyPress);
-    return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [isOpen, togglePlay, duration, toggleMute, toggleFullscreen]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl" isCentered>
@@ -324,10 +309,6 @@ export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, video
                         </HStack>
                       </HStack>
 
-                      {/* Keyboard shortcuts hint */}
-                      <Text fontSize="xs" color="gray.500" textAlign="center">
-                        Keyboard shortcuts: Space (play/pause), ← → (seek), M (mute), F (fullscreen)
-                      </Text>
                     </VStack>
                   )}
                 </VStack>
@@ -366,17 +347,57 @@ export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, video
                         />
                       </FormControl>
 
-                      {/* Video Info */}
-                      <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
-                        <Text fontSize="sm" color="blue.700" fontWeight="medium" mb={2}>
-                          📹 Video Reference
-                        </Text>
-                        <Text fontSize="xs" color="blue.600">
-                          Video ID: {ticketData.video_id}
-                        </Text>
-                        <Text fontSize="xs" color="blue.600">
-                          Index ID: {ticketData.index_id}
-                        </Text>
+                      {/* AI Enhancement Section */}
+                      <Box w="full" p={3} bg="purple.50" borderRadius="md" borderWidth="1px" borderColor="purple.200">
+                        <VStack spacing={3} align="start">
+                          <HStack justify="space-between" w="full">
+                            <Text fontSize="sm" color="purple.700" fontWeight="medium">
+                              🤖 AI Enhancement
+                            </Text>
+                            {enhancedTicket && (
+                              <Text fontSize="xs" color="green.600" fontWeight="medium" bg="green.50" px={2} py={1} borderRadius="md">
+                                ✨ Enhanced
+                              </Text>
+                            )}
+                          </HStack>
+                          <Textarea
+                            placeholder="Add context to improve this ticket..."
+                            value={enhancementContext || ""}
+                            onChange={(e) => onEnhancementContextChange?.(e.target.value)}
+                            resize="vertical"
+                            minH="60px"
+                            bg="white"
+                            borderColor="purple.300"
+                            fontSize="sm"
+                            _focus={{
+                              borderColor: "purple.500",
+                              boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)",
+                            }}
+                          />
+                          <HStack spacing={2} w="full">
+                            <Button
+                              colorScheme="purple"
+                              onClick={onEnhanceTicket}
+                              isLoading={isEnhancing}
+                              loadingText="Enhancing..."
+                              isDisabled={!enhancementContext?.trim()}
+                              size="sm"
+                              flex={1}
+                            >
+                              Enhance
+                            </Button>
+                            {enhancedTicket && onResetEnhancement && (
+                              <Button 
+                                variant="ghost" 
+                                colorScheme="gray" 
+                                onClick={onResetEnhancement} 
+                                size="sm"
+                              >
+                                Reset
+                              </Button>
+                            )}
+                          </HStack>
+                        </VStack>
                       </Box>
                     </VStack>
                   ) : ticketData.raw_response ? (
@@ -494,10 +515,6 @@ export const VideoPlayerModal = ({ isOpen, onClose, videoTitle, videoBlob, video
                     </HStack>
                   </HStack>
 
-                  {/* Keyboard shortcuts hint */}
-                  <Text fontSize="xs" color="gray.500" textAlign="center">
-                    Keyboard shortcuts: Space (play/pause), ← → (seek), M (mute), F (fullscreen)
-                  </Text>
                 </VStack>
               )}
             </VStack>
