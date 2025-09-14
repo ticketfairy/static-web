@@ -486,14 +486,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     const baseTitle = title || formattedTimestamp;
     const uniqueTitle = generateUniqueFilename(baseTitle);
 
-    // Generate thumbnail for the video
+    // Generate thumbnail for the video with S3 caching if title is provided
     let thumbnailUrl: string | undefined;
     try {
-      thumbnailUrl = await generateThumbnailFromBlob(blob, {
-        width: 320,
-        height: 180,
-        timeOffset: 1,
-      });
+      // Use title as filename for S3 caching if available
+      const filename = title || uniqueTitle;
+      thumbnailUrl = await generateThumbnailFromBlob(
+        blob,
+        {
+          width: 320,
+          height: 180,
+          timeOffset: 1,
+        },
+        filename
+      );
     } catch (error) {
       console.warn("Failed to generate thumbnail:", error);
       // Fallback to placeholder thumbnail

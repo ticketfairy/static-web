@@ -106,6 +106,13 @@ export class S3VideoUploader {
     return `tickets/${nameWithoutExt}.json`;
   }
 
+  // Generate a key for the thumbnail image based on video filename
+  private generateThumbnailKey(videoFilename: string): string {
+    // Remove the video extension and add .jpg
+    const nameWithoutExt = videoFilename.replace(/\.[^/.]+$/, "");
+    return `thumbnails/${nameWithoutExt}.jpg`;
+  }
+
   // Upload video blob to S3
   async uploadVideo(videoBlob: Blob, filename?: string, _onProgress?: (progress: number) => void): Promise<S3UploadResult> {
     if (!this.s3Client) {
@@ -413,6 +420,112 @@ export class S3VideoUploader {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete ticket data",
+      };
+    }
+  }
+
+  // Upload thumbnail to S3
+  async uploadThumbnail(thumbnailDataUrl: string, videoFilename: string): Promise<S3UploadResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const key = this.generateThumbnailKey(videoFilename);
+
+      // Convert data URL to blob
+      const response = await fetch(thumbnailDataUrl);
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: new Uint8Array(arrayBuffer),
+        ContentType: "image/jpeg",
+        Metadata: {
+          "uploaded-by": "ticketfairy-client",
+          "upload-timestamp": new Date().toISOString(),
+          "video-filename": videoFilename,
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const url = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+
+      return {
+        success: true,
+        url,
+        key,
+      };
+    } catch (error) {
+      console.error("S3 thumbnail upload error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to upload thumbnail",
+      };
+    }
+  }
+
+  // Check if thumbnail exists in S3 and return its URL
+  async getThumbnailUrl(videoFilename: string): Promise<string | null> {
+    if (!this.s3Client) {
+      return null;
+    }
+
+    try {
+      const key = this.generateThumbnailKey(videoFilename);
+
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+
+      // If we get here, the thumbnail exists
+      return `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+    } catch (error) {
+      // If the file doesn't exist, that's expected - return null
+      if (error instanceof Error && error.name === "NoSuchKey") {
+        return null;
+      }
+      console.error("Error checking thumbnail existence:", error);
+      return null;
+    }
+  }
+
+  // Delete thumbnail from S3
+  async deleteThumbnail(videoFilename: string): Promise<S3DeleteResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const key = this.generateThumbnailKey(videoFilename);
+
+      const command = new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("S3 thumbnail delete error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete thumbnail",
       };
     }
   }
