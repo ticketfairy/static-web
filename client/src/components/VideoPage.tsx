@@ -65,8 +65,8 @@ import { PermissionsPopup } from "./PermissionsPopup";
 import { ReadyToRecordModal } from "./ReadyToRecordModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
-import { useS3Upload, useS3VideoList } from "../hooks/useS3Upload";
-import type { S3VideoMetadata } from "../utils/s3Upload";
+import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
+import type { S3VideoMetadata, TicketData } from "../utils/s3Upload";
 import { generateThumbnailFromBlob, generateThumbnailFromUrl, createPlaceholderThumbnail } from "../utils/videoThumbnails";
 
 interface VideoPageProps {
@@ -123,6 +123,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   // S3 video listing hook
   const { listState, refreshVideoList, deleteVideo: deleteS3Video, isConfigured: isS3ListConfigured } = useS3VideoList();
 
+  // S3 ticket persistence hook
+  const { saveTicket, loadTicket, deleteTicket: deleteS3Ticket, isConfigured: isS3TicketConfigured } = useS3Ticket();
+
   // Helper function to convert S3 video to VideoItem format
   const convertS3VideoToVideoItem = useCallback(
     (s3Video: S3VideoMetadata): VideoItem => {
@@ -169,6 +172,53 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     // Combine and sort by creation date (newest first)
     return [...s3Videos, ...localVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [listState.videos, videos, s3VideoThumbnails, convertS3VideoToVideoItem]);
+
+  // Load existing tickets for S3 videos
+  const loadExistingTickets = useCallback(async () => {
+    if (!isS3TicketConfigured || listState.videos.length === 0) return;
+
+    const videosNeedingTickets = listState.videos.filter((video) => {
+      const videoId = video.key;
+      return !videoTickets[videoId] && !analyzingVideos.has(videoId);
+    });
+
+    if (videosNeedingTickets.length === 0) return;
+
+    console.log(`Loading existing tickets for ${videosNeedingTickets.length} videos...`);
+
+    for (const s3Video of videosNeedingTickets) {
+      try {
+        // Extract filename from S3 key
+        const keyParts = s3Video.key.split("/");
+        const filename = keyParts[keyParts.length - 1];
+
+        const ticketResult = await loadTicket(filename);
+
+        if (ticketResult.success && ticketResult.ticketData) {
+          // Convert the persisted ticket data back to the expected format
+          const mockApiResult = {
+            success: true,
+            ticket: {
+              title: ticketResult.ticketData.title,
+              description: ticketResult.ticketData.description,
+            },
+            video_id: ticketResult.ticketData.videoId,
+            index_id: ticketResult.ticketData.indexId,
+          };
+
+          // Store the ticket result for this video
+          setVideoTickets((prev) => ({
+            ...prev,
+            [s3Video.key]: mockApiResult,
+          }));
+
+          console.log(`Loaded existing ticket for ${filename}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to load ticket for ${s3Video.key}:`, error);
+      }
+    }
+  }, [listState.videos, videoTickets, analyzingVideos, isS3TicketConfigured, loadTicket]);
 
   // Generate real thumbnails for S3 videos asynchronously
   const generateS3Thumbnails = useCallback(async () => {
@@ -221,6 +271,16 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     }
   }, [listState.videos, listState.isLoading, generateS3Thumbnails]);
 
+  // Load existing tickets when S3 videos are loaded
+  useEffect(() => {
+    if (listState.videos.length > 0 && !listState.isLoading && isS3TicketConfigured) {
+      // Small delay to allow video state to settle
+      setTimeout(() => {
+        loadExistingTickets();
+      }, 1500);
+    }
+  }, [listState.videos, listState.isLoading, isS3TicketConfigured, loadExistingTickets]);
+
   // Helper function to generate video duration from blob
   const getVideoDuration = (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
@@ -243,7 +303,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   };
 
   // Helper function to analyze video and store ticket
-  const analyzeVideoAndStoreTicket = async (videoId: string, s3Url: string) => {
+  const analyzeVideoAndStoreTicket = async (videoId: string, s3Url: string, videoFilename?: string) => {
     // Mark video as analyzing
     setAnalyzingVideos((prev) => new Set(prev).add(videoId));
 
@@ -256,6 +316,28 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         ...prev,
         [videoId]: result,
       }));
+
+      // Save ticket data to S3 if we have a successful ticket and S3 is configured
+      if (result.success && result.ticket && videoFilename && isS3TicketConfigured) {
+        try {
+          const ticketData: Omit<TicketData, "createdAt" | "updatedAt"> = {
+            title: result.ticket.title,
+            description: result.ticket.description,
+            videoId: result.video_id || videoId,
+            indexId: result.index_id,
+          };
+
+          const saveResult = await saveTicket(videoFilename, ticketData);
+
+          if (saveResult.success) {
+            console.log("Ticket data saved to S3 successfully");
+          } else {
+            console.warn("Failed to save ticket data to S3:", saveResult.error);
+          }
+        } catch (ticketSaveError) {
+          console.warn("Error saving ticket to S3:", ticketSaveError);
+        }
+      }
 
       toast({
         title: "Video Analysis Complete!",
@@ -322,7 +404,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
         // Automatically trigger video analysis after upload
         setTimeout(() => {
-          analyzeVideoAndStoreTicket(videoId, result.url!);
+          analyzeVideoAndStoreTicket(videoId, result.url!, filename);
         }, 2000); // Small delay to ensure S3 is ready
 
         // Refresh the S3 video list to include the newly uploaded video
@@ -468,10 +550,28 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         if (!result.success) {
           throw new Error(result.error || "Failed to delete video from S3");
         }
+
+        // Also delete the associated ticket data if S3 ticket is configured
+        if (isS3TicketConfigured) {
+          try {
+            await deleteS3Ticket(videoToDelete.title);
+            console.log("Associated ticket data deleted from S3");
+          } catch (ticketDeleteError) {
+            console.warn("Failed to delete ticket data:", ticketDeleteError);
+            // Don't fail the whole operation if ticket deletion fails
+          }
+        }
       }
 
       // Remove from local videos state (for both local and S3 videos)
       setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
+
+      // Remove from video tickets state
+      setVideoTickets((prev) => {
+        const newTickets = { ...prev };
+        delete newTickets[videoToDelete.id];
+        return newTickets;
+      });
 
       toast({
         title: "Video Deleted",
@@ -871,6 +971,11 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           ☁️ Stored in cloud
                         </Text>
                       )}
+                      {videoTickets[video.id] && (
+                        <Text fontSize="xs" color="green.600">
+                          📋 Ticket available
+                        </Text>
+                      )}
                     </VStack>
 
                     <Textarea
@@ -945,7 +1050,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           onTicketResultModalOpen();
                         } else if (video.s3Url && !analyzingVideos.has(video.id)) {
                           // Manually trigger analysis if not done yet
-                          analyzeVideoAndStoreTicket(video.id, video.s3Url);
+                          analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
                         } else {
                           toast({
                             title: "Video Not Ready",

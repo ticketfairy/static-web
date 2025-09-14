@@ -43,6 +43,21 @@ export interface S3DeleteResult {
   error?: string;
 }
 
+export interface TicketData {
+  title: string;
+  description: string;
+  videoId: string;
+  indexId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface S3TicketResult {
+  success: boolean;
+  ticketData?: TicketData;
+  error?: string;
+}
+
 export class S3VideoUploader {
   private s3Client: S3Client | null = null;
 
@@ -82,6 +97,13 @@ export class S3VideoUploader {
     console.log("key", key);
 
     return key;
+  }
+
+  // Generate a key for the ticket JSON file based on video filename
+  private generateTicketKey(videoFilename: string): string {
+    // Remove the video extension and add .json
+    const nameWithoutExt = videoFilename.replace(/\.[^/.]+$/, "");
+    return `tickets/${nameWithoutExt}.json`;
   }
 
   // Upload video blob to S3
@@ -251,6 +273,139 @@ export class S3VideoUploader {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete video",
+      };
+    }
+  }
+
+  // Save ticket data to S3 as JSON
+  async saveTicketData(videoFilename: string, ticketData: Omit<TicketData, "createdAt" | "updatedAt">): Promise<S3UploadResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const key = this.generateTicketKey(videoFilename);
+      const now = new Date().toISOString();
+
+      const fullTicketData: TicketData = {
+        ...ticketData,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const jsonContent = JSON.stringify(fullTicketData, null, 2);
+
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: jsonContent,
+        ContentType: "application/json",
+        Metadata: {
+          "uploaded-by": "ticketfairy-client",
+          "upload-timestamp": now,
+          "video-filename": videoFilename,
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const url = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+
+      return {
+        success: true,
+        url,
+        key,
+      };
+    } catch (error) {
+      console.error("S3 ticket save error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to save ticket data",
+      };
+    }
+  }
+
+  // Load ticket data from S3
+  async loadTicketData(videoFilename: string): Promise<S3TicketResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const key = this.generateTicketKey(videoFilename);
+
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(command);
+
+      if (!response.Body) {
+        return {
+          success: false,
+          error: "No ticket data found",
+        };
+      }
+
+      // Convert the stream to string
+      const bodyString = await response.Body.transformToString();
+      const ticketData: TicketData = JSON.parse(bodyString);
+
+      return {
+        success: true,
+        ticketData,
+      };
+    } catch (error) {
+      // If the file doesn't exist, that's not really an error - just no ticket data yet
+      if (error instanceof Error && error.name === "NoSuchKey") {
+        return {
+          success: false,
+          error: "No ticket data found for this video",
+        };
+      }
+
+      console.error("S3 ticket load error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to load ticket data",
+      };
+    }
+  }
+
+  // Delete ticket data from S3
+  async deleteTicketData(videoFilename: string): Promise<S3DeleteResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      const key = this.generateTicketKey(videoFilename);
+
+      const command = new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("S3 ticket delete error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete ticket data",
       };
     }
   }
