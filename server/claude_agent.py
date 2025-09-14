@@ -17,7 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import anthropic
-from github import Github, Repository
+from github import Github
+from github.Repository import Repository
 from git import Repo
 import requests
 from dotenv import load_dotenv
