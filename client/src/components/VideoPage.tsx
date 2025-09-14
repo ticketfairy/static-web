@@ -26,6 +26,7 @@ import {
   HStack,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
+import { ThemeToggle } from "./ThemeToggle";
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import SparkleTrail from "./SparkleTrail";
@@ -1120,10 +1121,18 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       <SparkleTrail />
       {/* Back Button */}
       {onNavigateToLanding && (
-        <Box p={4}>
+        <Box p={4} display="flex" justifyContent="space-between" alignItems="center">
           <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
             Back to Home
           </Button>
+          <ThemeToggle />
+        </Box>
+      )}
+      
+      {/* Theme toggle for when there's no back button */}
+      {!onNavigateToLanding && (
+        <Box p={4} display="flex" justifyContent="flex-end">
+          <ThemeToggle />
         </Box>
       )}
 
