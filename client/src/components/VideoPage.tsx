@@ -30,7 +30,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 
 // API function to call Flask analyze_video endpoint
-const analyzeVideo = async (videoUrl: string) => {
+const analyzeVideo = async (videoUrl: string, userNotes: string) => {
   console.log("Calling analyze_video API with URL:", videoUrl);
   try {
     const response = await fetch("http://localhost:4000/analyze-video", {
@@ -40,6 +40,7 @@ const analyzeVideo = async (videoUrl: string) => {
       },
       body: JSON.stringify({
         video_url: videoUrl,
+        user_notes: userNotes,
       }),
     });
 
@@ -112,7 +113,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     uploadProgress?: number;
   }
 
-  const [videos, setVideos] = useState<VideoItem[]>([]);
+    const [videos, setVideos] = useState<VideoItem[]>([]);
+    const [videoNotes, setVideoNotes] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
@@ -307,37 +309,15 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     // Mark video as analyzing
     setAnalyzingVideos((prev) => new Set(prev).add(videoId));
 
-    try {
-      const result = await analyzeVideo(s3Url);
-      console.log("API Result for video", videoId, ":", result);
-
-      // Store the ticket result for this video
-      setVideoTickets((prev) => ({
-        ...prev,
-        [videoId]: result,
-      }));
-
-      // Save ticket data to S3 if we have a successful ticket and S3 is configured
-      if (result.success && result.ticket && videoFilename && isS3TicketConfigured) {
         try {
-          const ticketData: Omit<TicketData, "createdAt" | "updatedAt"> = {
-            title: result.ticket.title,
-            description: result.ticket.description,
-            videoId: result.video_id || videoId,
-            indexId: result.index_id,
-          };
+            const result = await analyzeVideo(s3Url, videoNotes[videoId] || "");
+            console.log("API Result for video", videoId, ":", result);
 
-          const saveResult = await saveTicket(videoFilename, ticketData);
-
-          if (saveResult.success) {
-            console.log("Ticket data saved to S3 successfully");
-          } else {
-            console.warn("Failed to save ticket data to S3:", saveResult.error);
-          }
-        } catch (ticketSaveError) {
-          console.warn("Error saving ticket to S3:", ticketSaveError);
-        }
-      }
+            // Store the ticket result for this video
+            setVideoTickets((prev) => ({
+                ...prev,
+                [videoId]: result,
+            }));
 
       toast({
         title: "Video Analysis Complete!",
@@ -522,7 +502,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
   // Helper function to update video notes
   const updateVideoNotes = (videoId: string, notes: string) => {
-    setVideos((prev) => prev.map((video) => (video.id === videoId ? { ...video, notes } : video)));
+    setVideoNotes((prev) => ({ ...prev, [videoId]: notes }));
   };
 
   // Helper function to handle delete video confirmation
@@ -834,13 +814,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           </VStack>
         )}
 
-        {/* S3 Configuration Status */}
-        {!isS3Configured && (
-          <Alert status="warning" borderRadius="md" maxW="600px">
-            <AlertIcon />
-            <Text>AWS S3 not configured. Videos will only be saved locally. Set up AWS credentials to enable cloud storage.</Text>
-          </Alert>
-        )}
+                {/* S3 Configuration Status */}
+                {!isS3Configured && (
+                    <Alert status="warning" borderRadius="md" maxW="600px">
+                        <AlertIcon />
+                        <Text>AWS S3 not configured. Videos will only be saved locally. Set up AWS credentials to enable cloud storage.</Text>
+                    </Alert>
+                )}
 
         {/* Sample Videos Section */}
         <Box w="full" pt={16}>
@@ -978,14 +958,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       )}
                     </VStack>
 
-                    <Textarea
-                      placeholder="Add optional notes to this video before generating a ticket..."
-                      value={video.notes}
-                      onChange={(e) => updateVideoNotes(video.id, e.target.value)}
-                      resize="vertical"
-                      minH="100px"
-                      bg="gray.50"
-                    />
+                                        <Textarea
+                                            placeholder="Add optional notes to this video before generating a ticket..."
+                                            value={videoNotes[video.id] || ""}
+                                            onChange={(e) => updateVideoNotes(video.id, e.target.value)}
+                                            resize="vertical"
+                                            minH="100px"
+                                            bg="gray.50"
+                                        />
 
                     <Flex gap={2}>
                       <Button
@@ -1299,137 +1279,186 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         videoUrl={videoToPlay?.s3Url}
       />
 
-      {/* Ticket Result Modal */}
-      <Modal isOpen={isTicketResultModalOpen} onClose={onTicketResultModalClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <Flex justify="space-between" align="center">
-              <Text>🎉 Generated Ticket</Text>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  if (selectedTicket) {
-                    let copyText = "";
+            {/* Ticket Result Modal */}
+            <Modal isOpen={isTicketResultModalOpen} onClose={onTicketResultModalClose} size="lg">
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>
+                        <Flex justify="space-between" align="center">
+                            <Text>🎉 Generated Ticket</Text>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                    if (selectedTicket) {
+                                        let copyText = "";
 
-                    if (selectedTicket.success && selectedTicket.ticket) {
-                      copyText = `Title: ${selectedTicket.ticket.title}\n\nDescription:\n${selectedTicket.ticket.description}\n\nVideo ID: ${selectedTicket.video_id}\nIndex ID: ${selectedTicket.index_id}`;
-                    } else if (selectedTicket.raw_response) {
-                      copyText = `Raw Analysis Result:\n${selectedTicket.raw_response}`;
-                    } else {
-                      copyText = "Analysis completed but no ticket data was returned.";
-                    }
+                                        if (selectedTicket.success && selectedTicket.ticket) {
+                                            copyText = `Title: ${selectedTicket.ticket.title}\n\nDescription:\n${selectedTicket.ticket.description}\n\nVideo ID: ${selectedTicket.video_id}\nIndex ID: ${selectedTicket.index_id}`;
+                                        } else if (selectedTicket.raw_response) {
+                                            copyText = `Raw Analysis Result:\n${selectedTicket.raw_response}`;
+                                        } else {
+                                            copyText = "Analysis completed but no ticket data was returned.";
+                                        }
 
-                    navigator.clipboard
-                      .writeText(copyText)
-                      .then(() => {
-                        toast({
-                          title: "Copied!",
-                          description: "Ticket content copied to clipboard",
-                          status: "success",
-                          duration: 2000,
-                          isClosable: true,
-                        });
-                      })
-                      .catch(() => {
-                        toast({
-                          title: "Copy Failed",
-                          description: "Could not copy to clipboard",
-                          status: "error",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      });
-                  }
-                }}
-                leftIcon={<Icon as={FiCopy} />}
-                mr={8}>
-                Copy
-              </Button>
-            </Flex>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {selectedTicket && (
-              <VStack spacing={4} align="start">
-                {selectedTicket.success && selectedTicket.ticket ? (
-                  <VStack spacing={3} align="start" w="full">
-                    <Box p={4} bg="gray.50" borderRadius="md" w="full">
-                      <VStack spacing={3} align="start">
-                        <Text fontWeight="bold" color="purple.600" fontSize="lg">
-                          Title:
-                        </Text>
-                        <Text fontSize="md">{selectedTicket.ticket.title}</Text>
-                        <Text fontWeight="bold" color="purple.600" fontSize="lg" mt={2}>
-                          Description:
-                        </Text>
-                        <Text fontSize="md" whiteSpace="pre-wrap">
-                          {selectedTicket.ticket.description}
-                        </Text>
-                      </VStack>
-                    </Box>
-                    <Text fontSize="sm" color="gray.500">
-                      Video ID: {selectedTicket.video_id} | Index ID: {selectedTicket.index_id}
-                    </Text>
-                  </VStack>
-                ) : selectedTicket.raw_response ? (
-                  <VStack spacing={3} align="start" w="full">
-                    <Text fontSize="lg" fontWeight="bold">
-                      Raw Analysis Result:
-                    </Text>
-                    <Code p={4} w="full" whiteSpace="pre-wrap" fontSize="sm">
-                      {selectedTicket.raw_response}
-                    </Code>
-                  </VStack>
-                ) : (
-                  <Alert status="warning">
-                    <AlertIcon />
-                    Analysis completed but no ticket data was returned.
-                  </Alert>
-                )}
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              colorScheme="blue"
-              mr={3}
-              onClick={() => {
-                // TODO: Implement Jira integration
-                toast({
-                  title: "Jira Integration",
-                  description: "Jira integration coming soon!",
-                  status: "info",
-                  duration: 3000,
-                  isClosable: true,
-                });
-              }}>
-              Open in Jira
-            </Button>
-            <Button
-              colorScheme="gray"
-              mr={3}
-              onClick={() => {
-                // TODO: Implement Linear integration
-                toast({
-                  title: "Linear Integration",
-                  description: "Linear integration coming soon!",
-                  status: "info",
-                  duration: 3000,
-                  isClosable: true,
-                });
-              }}>
-              Open in Linear
-            </Button>
-            <Button colorScheme="purple" onClick={onTicketResultModalClose}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Box>
-  );
+                                        navigator.clipboard
+                                            .writeText(copyText)
+                                            .then(() => {
+                                                toast({
+                                                    title: "Copied!",
+                                                    description: "Ticket content copied to clipboard",
+                                                    status: "success",
+                                                    duration: 2000,
+                                                    isClosable: true,
+                                                });
+                                            })
+                                            .catch(() => {
+                                                toast({
+                                                    title: "Copy Failed",
+                                                    description: "Could not copy to clipboard",
+                                                    status: "error",
+                                                    duration: 3000,
+                                                    isClosable: true,
+                                                });
+                                            });
+                                    }
+                                }}
+                                leftIcon={<Icon as={FiCopy} />}
+                                mr={8}
+                            >
+                                Copy
+                            </Button>
+                        </Flex>
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedTicket && (
+                            <VStack spacing={4} align="start">
+                                {selectedTicket.success && selectedTicket.ticket ? (
+                                    <VStack spacing={3} align="start" w="full">
+                                        <Box p={4} bg="gray.50" borderRadius="md" w="full">
+                                            <VStack spacing={3} align="start">
+                                                <Text fontWeight="bold" color="purple.600" fontSize="lg">
+                                                    Title:
+                                                </Text>
+                                                <Text fontSize="md">{selectedTicket.ticket.title}</Text>
+                                                <Text fontWeight="bold" color="purple.600" fontSize="lg" mt={2}>
+                                                    Description:
+                                                </Text>
+                                                <Text fontSize="md" whiteSpace="pre-wrap">
+                                                    {selectedTicket.ticket.description}
+                                                </Text>
+                                            </VStack>
+                                        </Box>
+                                        <Text fontSize="sm" color="gray.500">
+                                            Video ID: {selectedTicket.video_id} | Index ID: {selectedTicket.index_id}
+                                        </Text>
+                                    </VStack>
+                                ) : selectedTicket.raw_response ? (
+                                    <VStack spacing={3} align="start" w="full">
+                                        <Text fontSize="lg" fontWeight="bold">
+                                            Raw Analysis Result:
+                                        </Text>
+                                        <Code p={4} w="full" whiteSpace="pre-wrap" fontSize="sm">
+                                            {selectedTicket.raw_response}
+                                        </Code>
+                                    </VStack>
+                                ) : (
+                                    <Alert status="warning">
+                                        <AlertIcon />
+                                        Analysis completed but no ticket data was returned.
+                                    </Alert>
+                                )}
+                            </VStack>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            colorScheme="blue"
+                            mr={3}
+                            onClick={async () => {
+                                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                                    try {
+                                        const response = await fetch("http://localhost:4000/create-jira-ticket", {
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                            },
+                                            body: JSON.stringify({
+                                                title: selectedTicket.ticket.title,
+                                                description: selectedTicket.ticket.description,
+                                            }),
+                                        });
+
+                                        const result = await response.json();
+
+                                        if (result.success) {
+                                            toast({
+                                                title: "Jira Ticket Created!",
+                                                description: `Ticket ${result.ticket_key} created successfully`,
+                                                status: "success",
+                                                duration: 5000,
+                                                isClosable: true,
+                                            });
+                                            
+                                            // Open the Jira ticket in a new tab
+                                            window.open(result.ticket_url, '_blank');
+                                        } else {
+                                            toast({
+                                                title: "Failed to Create Jira Ticket",
+                                                description: result.error || "Unknown error occurred",
+                                                status: "error",
+                                                duration: 5000,
+                                                isClosable: true,
+                                            });
+                                        }
+                                    } catch (error) {
+                                        console.error("Jira API error:", error);
+                                        toast({
+                                            title: "Error",
+                                            description: "Failed to connect to Jira API",
+                                            status: "error",
+                                            duration: 5000,
+                                            isClosable: true,
+                                        });
+                                    }
+                                } else {
+                                    toast({
+                                        title: "No Ticket Data",
+                                        description: "Please generate a ticket first",
+                                        status: "warning",
+                                        duration: 3000,
+                                        isClosable: true,
+                                    });
+                                }
+                            }}
+                        >
+                            Open in Jira
+                        </Button>
+                        <Button
+                            colorScheme="gray"
+                            mr={3}
+                            onClick={() => {
+                                // TODO: Implement Linear integration
+                                toast({
+                                    title: "Linear Integration",
+                                    description: "Linear integration coming soon!",
+                                    status: "info",
+                                    duration: 3000,
+                                    isClosable: true,
+                                });
+                            }}
+                        >
+                            Open in Linear
+                        </Button>
+                        <Button colorScheme="purple" onClick={onTicketResultModalClose}>
+                            Close
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+        </Box>
+    );
 }
 
 export default VideoPage;
