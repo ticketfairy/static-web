@@ -95,6 +95,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     const [generatingThumbnails, setGeneratingThumbnails] = useState<Set<string>>(new Set());
     const [videoTickets, setVideoTickets] = useState<Record<string, any>>({});
     const [analyzingVideos, setAnalyzingVideos] = useState<Set<string>>(new Set());
+    const [s3VideoDurations, setS3VideoDurations] = useState<Record<string, string>>({});
+    const [loadingDurations, setLoadingDurations] = useState<Set<string>>(new Set());
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const { isOpen: isTicketResultModalOpen, onOpen: onTicketResultModalOpen, onClose: onTicketResultModalClose } = useDisclosure();
     const [enhancementContexts, setEnhancementContexts] = useState<Record<string, string>>({});
@@ -157,11 +159,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
             let createdAt = s3Video.lastModified;
 
-            // Generate a reasonable duration estimate based on file size (very rough)
-            const estimatedDuration = Math.max(30, Math.min(600, Math.floor(s3Video.size / 100000))); // rough estimate
-            const minutes = Math.floor(estimatedDuration / 60);
-            const seconds = estimatedDuration % 60;
-            const durationString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+            // Use cached duration if available, otherwise show loading
+            const cachedDuration = s3VideoDurations[s3Video.key];
+            const durationString = cachedDuration || "Loading...";
 
             // Use cached thumbnail if available, otherwise create placeholder
             const cachedThumbnail = s3VideoThumbnails[s3Video.key];
@@ -182,7 +182,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 filename, // Store original filename for display
             };
         },
-        [s3VideoThumbnails, videoTickets]
+        [s3VideoThumbnails, videoTickets, s3VideoDurations]
     );
 
     // Merge local videos with S3 videos
@@ -280,6 +280,109 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         }
     }, [listState.videos, s3VideoThumbnails, generatingThumbnails]);
 
+    // Generate real durations for S3 videos asynchronously
+    const generateS3Durations = useCallback(async () => {
+        const s3VideosNeedingDurations = listState.videos.filter((video) => !s3VideoDurations[video.key] && !loadingDurations.has(video.key));
+
+        if (s3VideosNeedingDurations.length === 0) return;
+
+        // Mark videos as being processed
+        setLoadingDurations((prev) => {
+            const newSet = new Set(prev);
+            s3VideosNeedingDurations.forEach((video) => newSet.add(video.key));
+            return newSet;
+        });
+
+        for (const s3Video of s3VideosNeedingDurations) {
+            try {
+                // Create a video element to get the real duration
+                const video = document.createElement("video");
+                video.crossOrigin = "anonymous";
+                video.preload = "metadata"; // Only load metadata, not the full video
+                video.muted = true; // Helps with autoplay policies
+                
+                await new Promise<void>((resolve) => {
+                    let resolved = false;
+                    
+                    const cleanup = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            video.src = "";
+                            video.load(); // Clear the video element
+                        }
+                    };
+
+                    video.onloadedmetadata = () => {
+                        if (resolved) return;
+                        
+                        const duration = video.duration;
+                        if (isNaN(duration) || duration === 0) {
+                            console.warn(`Invalid duration for ${s3Video.key}: ${duration}`);
+                            setS3VideoDurations((prev) => ({
+                                ...prev,
+                                [s3Video.key]: "Unknown",
+                            }));
+                        } else {
+                            const minutes = Math.floor(duration / 60);
+                            const seconds = Math.floor(duration % 60);
+                            const durationString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+                            // Cache the duration
+                            setS3VideoDurations((prev) => ({
+                                ...prev,
+                                [s3Video.key]: durationString,
+                            }));
+                        }
+
+                        cleanup();
+                        resolve();
+                    };
+                    
+                    video.onerror = (error) => {
+                        if (resolved) return;
+                        console.warn(`Failed to load video metadata for ${s3Video.key}:`, error);
+                        // Set a fallback duration
+                        setS3VideoDurations((prev) => ({
+                            ...prev,
+                            [s3Video.key]: "Unknown",
+                        }));
+                        cleanup();
+                        resolve();
+                    };
+
+                    // Reduced timeout and better logging
+                    const timeoutId = setTimeout(() => {
+                        if (resolved) return;
+                        console.warn(`Timeout loading video metadata for ${s3Video.key} - this may indicate CORS issues or slow network`);
+                        setS3VideoDurations((prev) => ({
+                            ...prev,
+                            [s3Video.key]: "Unknown",
+                        }));
+                        cleanup();
+                        resolve();
+                    }, 5000); // Reduced from 10s to 5s
+
+                    // Set the source after setting up event listeners
+                    video.src = s3Video.url;
+                });
+            } catch (error) {
+                console.warn(`Failed to get duration for ${s3Video.key}:`, error);
+                // Set fallback duration
+                setS3VideoDurations((prev) => ({
+                    ...prev,
+                    [s3Video.key]: "Unknown",
+                }));
+            } finally {
+                // Remove from loading set
+                setLoadingDurations((prev) => {
+                    const newSet = new Set(prev);
+                    newSet.delete(s3Video.key);
+                    return newSet;
+                });
+            }
+        }
+    }, [listState.videos, s3VideoDurations, loadingDurations]);
+
     // Trigger S3 thumbnail generation when S3 videos are loaded
     useEffect(() => {
         if (listState.videos.length > 0 && !listState.isLoading) {
@@ -289,6 +392,16 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
             }, 1000);
         }
     }, [listState.videos, listState.isLoading, generateS3Thumbnails]);
+
+    // Trigger S3 duration generation when S3 videos are loaded
+    useEffect(() => {
+        if (listState.videos.length > 0 && !listState.isLoading) {
+            // Small delay to allow UI to render first, and after thumbnails start loading
+            setTimeout(() => {
+                generateS3Durations();
+            }, 1500);
+        }
+    }, [listState.videos, listState.isLoading, generateS3Durations]);
 
     // Load existing tickets when S3 videos are loaded
     useEffect(() => {
