@@ -449,7 +449,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       ];
 
       let mediaRecorder: MediaRecorder | null = null;
-      let lastError: any = null;
+      let lastError: Error | null = null;
 
       for (const option of options) {
         try {
@@ -465,7 +465,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
           break;
         } catch (e) {
           console.warn("Failed to create MediaRecorder with option:", option, e);
-          lastError = e;
+          lastError = e instanceof Error ? e : new Error(String(e));
           continue;
         }
       }
@@ -483,7 +483,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
               console.log("MediaRecorder created with screen-only fallback:", option);
               break;
             } catch (screenError) {
-              lastError = screenError;
+              lastError = screenError instanceof Error ? screenError : new Error(String(screenError));
               continue;
             }
           }
@@ -525,67 +525,41 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       };
 
       mediaRecorder.onstart = () => {
-        console.log("🎬 MediaRecorder started - beginning countdown display");
-        
-        // Clear any existing timers before starting new ones
+        console.log("🎬 MediaRecorder started - recording is now active!");
+
+        // Clear any existing recording timer before starting new one
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        if (countdownTimerRef.current) {
-          clearInterval(countdownTimerRef.current);
-          countdownTimerRef.current = null;
-        }
-        
+
         setState((prev) => ({
           ...prev,
           isRecording: true,
           recordingTime: 0,
           error: null,
-          isCountingDown: true,
-          countdown: 3,
+          isCountingDown: false, // Countdown is already done
         }));
 
-        // Start the countdown timer for visual display
-        countdownTimerRef.current = window.setInterval(() => {
-          setState((prev) => {
-            const newCountdown = prev.countdown - 1;
+        // Start the recording timer immediately since countdown is already complete
+        timerRef.current = window.setInterval(() => {
+          setState((prevState) => {
+            const newRecordingTime = prevState.recordingTime + 1;
 
-            if (newCountdown <= 0) {
-              // Clear countdown timer
-              if (countdownTimerRef.current) {
-                clearInterval(countdownTimerRef.current);
-                countdownTimerRef.current = null;
+            // Request data every 5 seconds to ensure we're getting chunks
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && newRecordingTime % 5 === 0) {
+              try {
+                mediaRecorderRef.current.requestData();
+                console.log("🔄 Requested data chunk at", newRecordingTime, "seconds");
+              } catch (e) {
+                console.warn("Could not request data:", e);
               }
-              
-              // Start the recording timer after countdown
-              if (!timerRef.current) {
-                timerRef.current = window.setInterval(() => {
-                  setState((prevState) => {
-                    const newRecordingTime = prevState.recordingTime + 1;
-
-                    // Request data every 5 seconds to ensure we're getting chunks
-                    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && newRecordingTime % 5 === 0) {
-                      try {
-                        mediaRecorderRef.current.requestData();
-                        console.log("🔄 Requested data chunk at", newRecordingTime, "seconds");
-                      } catch (e) {
-                        console.warn("Could not request data:", e);
-                      }
-                    }
-
-                    return {
-                      ...prevState,
-                      recordingTime: newRecordingTime,
-                    };
-                  });
-                }, 1000);
-              }
-
-              return { ...prev, isCountingDown: false, countdown: 0 };
             }
 
-            return { ...prev, countdown: newCountdown };
+            return {
+              ...prevState,
+              recordingTime: newRecordingTime,
+            };
           });
         }, 1000);
       };
@@ -602,8 +576,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         }
       };
 
-      console.log("🎬 Starting MediaRecorder immediately...");
-      console.log("📊 Stream status before starting:", {
+      console.log("🎬 Preparing MediaRecorder - will start after countdown...");
+      console.log("📊 Stream status before countdown:", {
         screenActive: streams.screenStream?.active,
         screenTracks: streams.screenStream?.getTracks().length,
         webcamActive: streams.webcamStream?.active,
@@ -615,8 +589,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       // Set MediaRecorder reference first
       mediaRecorderRef.current = mediaRecorder;
 
-      // NO DELAY - Start immediately to prevent browser from closing screen share
-      console.log("⚡ Starting MediaRecorder immediately without delay to prevent stream closure");
+      console.log("⏱️ Starting 3-second countdown before recording begins...");
 
       // Ensure MediaRecorder is in the correct state
       if (mediaRecorder.state !== "inactive") {
@@ -674,41 +647,84 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         }
       }
 
-      try {
-        // FINAL stream check right before starting
-        console.log("🔍 FINAL check - Stream active:", recordingStream.active, "Tracks:", recordingStream.getTracks().length);
+      // Start countdown display and then start recording after countdown completes
+      setState((prev) => ({
+        ...prev,
+        isRecording: false, // Not actually recording yet, just showing countdown
+        recordingTime: 0,
+        error: null,
+        isCountingDown: true,
+        countdown: 3,
+      }));
 
-        if (!recordingStream.active) {
-          console.error("❌ CRITICAL: Stream became inactive right before start!");
-          throw new Error("Stream closed right before MediaRecorder start");
-        }
+      // Start the countdown timer
+      countdownTimerRef.current = window.setInterval(() => {
+        setState((prev) => {
+          const newCountdown = prev.countdown - 1;
 
-        // Try different time slice approaches for better compatibility
-        console.log("🚀 Attempting to start MediaRecorder with mimeType:", mediaRecorder.mimeType);
+          if (newCountdown <= 0) {
+            // Clear countdown timer
+            if (countdownTimerRef.current) {
+              clearInterval(countdownTimerRef.current);
+              countdownTimerRef.current = null;
+            }
 
-        // Start with most reliable approach first - no time slice
-        try {
-          mediaRecorder.start(); // Start without time slice for maximum compatibility
-          console.log("✅ MediaRecorder started successfully without time slice");
-        } catch (noTimeSliceError) {
-          console.warn("⚠️ Failed without time slice, trying 1s:", noTimeSliceError);
-          try {
-            mediaRecorder.start(1000); // Capture data every 1 second
-            console.log("✅ MediaRecorder started successfully with 1s time slice");
-          } catch (oneSecError) {
-            console.warn("⚠️ Failed with 1s time slice, trying 500ms:", oneSecError);
-            mediaRecorder.start(500); // Capture data every 500ms
-            console.log("✅ MediaRecorder started successfully with 500ms time slice");
+            // NOW START THE ACTUAL RECORDING
+            console.log("🚀 Countdown complete - starting MediaRecorder now!");
+
+            try {
+              // FINAL stream check right before starting
+              console.log("🔍 FINAL check - Stream active:", recordingStream.active, "Tracks:", recordingStream.getTracks().length);
+
+              if (!recordingStream.active) {
+                console.error("❌ CRITICAL: Stream became inactive during countdown!");
+                setState((prevState) => ({
+                  ...prevState,
+                  error: "Stream closed during countdown. Please try again.",
+                  isCountingDown: false,
+                  countdown: 3,
+                }));
+                return { ...prev, isCountingDown: false, countdown: 0 };
+              }
+
+              // Try different time slice approaches for better compatibility
+              console.log("🚀 Attempting to start MediaRecorder with mimeType:", mediaRecorder.mimeType);
+
+              // Start with most reliable approach first - no time slice
+              try {
+                mediaRecorder.start(); // Start without time slice for maximum compatibility
+                console.log("✅ MediaRecorder started successfully without time slice");
+              } catch (noTimeSliceError) {
+                console.warn("⚠️ Failed without time slice, trying 1s:", noTimeSliceError);
+                try {
+                  mediaRecorder.start(1000); // Capture data every 1 second
+                  console.log("✅ MediaRecorder started successfully with 1s time slice");
+                } catch (oneSecError) {
+                  console.warn("⚠️ Failed with 1s time slice, trying 500ms:", oneSecError);
+                  mediaRecorder.start(500); // Capture data every 500ms
+                  console.log("✅ MediaRecorder started successfully with 500ms time slice");
+                }
+              }
+            } catch (startError) {
+              console.error("❌ Failed to start MediaRecorder:", startError);
+              console.error("❌ Stream status at failure:", {
+                active: recordingStream.active,
+                tracks: recordingStream.getTracks().map((t) => ({ kind: t.kind, readyState: t.readyState })),
+              });
+              setState((prevState) => ({
+                ...prevState,
+                error: `Failed to start recording: ${startError instanceof Error ? startError.message : "Unknown error"}`,
+                isCountingDown: false,
+                countdown: 3,
+              }));
+            }
+
+            return { ...prev, isCountingDown: false, countdown: 0 };
           }
-        }
-      } catch (startError) {
-        console.error("❌ Failed to start MediaRecorder:", startError);
-        console.error("❌ Stream status at failure:", {
-          active: recordingStream.active,
-          tracks: recordingStream.getTracks().map((t) => ({ kind: t.kind, readyState: t.readyState })),
+
+          return { ...prev, countdown: newCountdown };
         });
-        throw new Error(`Failed to start recording: ${startError instanceof Error ? startError.message : "Unknown error"}`);
-      }
+      }, 1000);
     } catch (error) {
       console.error("Failed to start recording:", error);
       setState((prev) => ({
