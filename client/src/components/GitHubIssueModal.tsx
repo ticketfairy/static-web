@@ -137,32 +137,6 @@ export const GitHubIssueModal: React.FC<GitHubIssueModalProps> = ({ isOpen, onCl
     }, 500);
   };
 
-  // Add label
-  const addLabel = () => {
-    if (newLabel.trim() && !labels.includes(newLabel.trim())) {
-      setLabels([...labels, newLabel.trim()]);
-      setNewLabel("");
-    }
-  };
-
-  // Remove label
-  const removeLabel = (labelToRemove: string) => {
-    setLabels(labels.filter((label) => label !== labelToRemove));
-  };
-
-  // Add assignee
-  const addAssignee = () => {
-    if (newAssignee.trim() && !assignees.includes(newAssignee.trim())) {
-      setAssignees([...assignees, newAssignee.trim()]);
-      setNewAssignee("");
-    }
-  };
-
-  // Remove assignee
-  const removeAssignee = (assigneeToRemove: string) => {
-    setAssignees(assignees.filter((assignee) => assignee !== assigneeToRemove));
-  };
-
   // Create GitHub issue
   const createGitHubIssue = async () => {
     if (!repoName.trim()) {

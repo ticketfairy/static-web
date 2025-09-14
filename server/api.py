@@ -181,6 +181,10 @@ def create_linear_issue_endpoint():
 
 @app.route("/create-github-issue", methods=["POST"])
 def create_github_issue_endpoint():
+    """
+    Create a GitHub issue from ticket data
+    @claude please review this endpoint for security and error handling
+    """
     try:
         # Get ticket data from request
         data = request.get_json()
@@ -194,10 +198,13 @@ def create_github_issue_endpoint():
         labels = data.get("labels", [])  # Optional labels
         assignees = data.get("assignees", [])  # Optional assignees
 
+        # Add Claude mention to description for potential AI assistance
+        enhanced_description = f"{description}\n\n---\n*Created by Ticket Fairy - @claude feel free to provide suggestions or improvements for this issue*"
+
         # Create GitHub issue
         result = create_github_issue(
             title=title,
-            description=description,
+            description=enhanced_description,
             repo_name=repo_name,
             github_token=github_token,
             labels=labels,
