@@ -87,34 +87,32 @@ class ClaudeCodeAgent:
         Returns:
             TicketAnalysis object with structured analysis results
         """
-        prompt = f"""
-        You are a senior software engineer analyzing a ticket for implementation. 
-        
-        Ticket Description:
-        {ticket_description}
-        
-        Repository Context:
-        {repository_context}
-        
-        Please analyze this ticket and provide a structured response in JSON format with the following fields:
-        
-        {{
-            "title": "A concise title for the implementation",
-            "description": "A clear description of what needs to be implemented",
-            "requirements": ["List of specific requirements extracted from the ticket"],
-            "files_to_modify": ["List of files that likely need to be modified (use your best judgment)"],
-            "implementation_plan": ["Step-by-step implementation plan"],
-            "estimated_complexity": "low|medium|high"
-        }}
-        
-        Focus on:
-        1. Extracting clear, actionable requirements
-        2. Identifying which files might need changes
-        3. Creating a logical implementation sequence
-        4. Assessing complexity realistically
-        
-        Return only the JSON object, no additional text.
-        """
+        prompt = f"""Analyze this development ticket and provide implementation guidance.
+
+TICKET: {ticket_description}
+
+REPOSITORY CONTEXT:
+{repository_context[:1500] if repository_context else "No repository context provided"}
+
+Provide analysis in this JSON format:
+
+{{
+    "title": "Clear, actionable title",
+    "description": "Detailed implementation description",
+    "requirements": ["Specific, testable requirements"],
+    "files_to_modify": ["Specific file paths that need changes"],
+    "implementation_plan": ["Concrete implementation steps"],
+    "estimated_complexity": "low|medium|high"
+}}
+
+GUIDELINES:
+- Be specific about file paths (e.g., "src/components/Button.tsx", not just "Button component")
+- Include at least 1-3 specific files to modify
+- Make requirements actionable and testable
+- If no existing files match, suggest new file names with appropriate paths
+- Consider common patterns: components, services, utils, tests, config files
+
+Return only valid JSON, no markdown or explanations."""
         
         try:
             response = self.claude.messages.create(
@@ -240,57 +238,106 @@ class ClaudeCodeAgent:
                 except Exception as e:
                     print(f"Could not read {file_path}: {e}")
         
-        prompt = f"""
-        You are a senior software engineer implementing the following ticket:
+        # Create a more focused prompt
+        repo_summary = repo_structure[:2000] if len(repo_structure) > 2000 else repo_structure
+        files_summary = {}
         
-        Title: {analysis.title}
-        Description: {analysis.description}
-        Requirements: {', '.join(analysis.requirements)}
-        Implementation Plan: {', '.join(analysis.implementation_plan)}
+        # Limit existing files content to avoid token limits
+        for file_path, content in existing_files_content.items():
+            if len(content) > 1000:
+                files_summary[file_path] = content[:1000] + "\n... (truncated)"
+            else:
+                files_summary[file_path] = content
         
-        Repository Structure:
-        {repo_structure}
-        
-        Existing Files Content:
-        {json.dumps(existing_files_content, indent=2)}
-        
-        Please generate the necessary code changes to implement this ticket. For each file that needs to be modified or created, provide:
-        
-        1. The complete new content of the file
-        2. A description of what changes were made
-        
-        Respond in JSON format:
+        prompt = f"""You are implementing this ticket:
+
+TICKET: {analysis.title}
+
+DESCRIPTION: {analysis.description}
+
+REQUIREMENTS:
+{chr(10).join(f'- {req}' for req in analysis.requirements[:5])}
+
+REPOSITORY FILES (sample):
+{repo_summary}
+
+EXISTING FILES TO MODIFY:
+{json.dumps(files_summary, indent=2) if files_summary else "No existing files provided"}
+
+TASK: Generate code changes to implement this ticket.
+
+IMPORTANT: You must respond with ONLY a valid JSON object in this exact format:
+
+{{
+    "changes": [
         {{
-            "changes": [
-                {{
-                    "file_path": "path/to/file.ext",
-                    "new_content": "complete file content here",
-                    "change_description": "description of changes made"
-                }}
-            ]
+            "file_path": "relative/path/to/file.ext",
+            "new_content": "complete file content here",
+            "change_description": "brief description of changes"
         }}
-        
-        Guidelines:
-        - Write clean, maintainable, and well-documented code
-        - Follow the existing code style and patterns in the repository
-        - Include appropriate error handling
-        - Add comments where necessary
-        - Ensure the code is production-ready
-        - Only include files that actually need changes
-        
-        Return only the JSON object, no additional text.
-        """
+    ]
+}}
+
+RULES:
+- Include at least 1 file change
+- Use relative paths from repository root
+- Provide complete file content, not just diffs
+- Write production-ready code with proper error handling
+- Follow existing code patterns if files exist
+- If creating new files, use appropriate file extensions
+
+Respond with JSON only, no markdown, no explanations."""
         
         try:
+            print(f"Generating code changes for ticket: {analysis.title}")
+            print(f"Repository structure has {len(repo_structure.split())} files")
+            print(f"Existing files to modify: {analysis.files_to_modify}")
+            
             response = self.claude.messages.create(
                 model="claude-3-5-sonnet-20241022",
-                max_tokens=4000,
+                max_tokens=8000,  # Increased token limit
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            changes_json = json.loads(response.content[0].text)
+            response_text = response.content[0].text
+            print(f"Claude response length: {len(response_text)} characters")
+            print(f"Claude response preview: {response_text[:200]}...")
             
-            for change_data in changes_json["changes"]:
+            # Try to extract JSON from the response
+            try:
+                changes_json = json.loads(response_text)
+            except json.JSONDecodeError as json_error:
+                print(f"JSON parsing failed: {json_error}")
+                print(f"Raw response: {response_text}")
+                
+                # Try to extract JSON from markdown code blocks
+                import re
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if json_match:
+                    try:
+                        changes_json = json.loads(json_match.group(1))
+                        print("Successfully extracted JSON from code block")
+                    except json.JSONDecodeError:
+                        print("Failed to parse JSON even from code block")
+                        return changes
+                else:
+                    print("No JSON found in response")
+                    return changes
+            
+            if "changes" not in changes_json:
+                print(f"No 'changes' key in response: {changes_json}")
+                return changes
+            
+            changes_list = changes_json["changes"]
+            print(f"Found {len(changes_list)} changes to apply")
+            
+            for i, change_data in enumerate(changes_list):
+                print(f"Processing change {i+1}: {change_data.get('file_path', 'unknown')}")
+                
+                if not all(key in change_data for key in ["file_path", "new_content", "change_description"]):
+                    print(f"Skipping incomplete change data: {change_data}")
+                    continue
+                
                 file_path = change_data["file_path"]
                 original_content = existing_files_content.get(file_path, "")
                 
@@ -303,7 +350,42 @@ class ClaudeCodeAgent:
                 
         except Exception as e:
             print(f"Error generating code changes: {e}")
+            import traceback
+            traceback.print_exc()
             # Return empty changes if generation fails
+            
+        # If no changes were generated, create a simple example change
+        if not changes:
+            print("No changes generated by Claude, creating fallback change")
+            
+            # Create a simple README or implementation file as fallback
+            fallback_content = f"""# Implementation for: {analysis.title}
+
+## Description
+{analysis.description}
+
+## Requirements
+{chr(10).join(f'- {req}' for req in analysis.requirements)}
+
+## Implementation Plan
+{chr(10).join(f'{i+1}. {step}' for i, step in enumerate(analysis.implementation_plan))}
+
+## Status
+This is a placeholder implementation. Please review and modify as needed.
+
+## Next Steps
+- Review the requirements above
+- Implement the actual functionality
+- Add appropriate tests
+- Update documentation
+"""
+            
+            changes.append(CodeChange(
+                file_path="IMPLEMENTATION_NOTES.md",
+                original_content="",
+                new_content=fallback_content,
+                change_description=f"Created implementation notes for {analysis.title}"
+            ))
             
         return changes
     

@@ -421,5 +421,42 @@ def agent_status():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/test-claude", methods=["POST"])
+def test_claude():
+    """
+    Test Claude agent with a simple ticket analysis
+    """
+    try:
+        data = request.get_json()
+        ticket_description = data.get("ticket_description", "Add a simple hello world function to the codebase")
+        
+        anthropic_api_key = data.get("anthropic_api_key", ANTHROPIC_API_KEY)
+        if not anthropic_api_key:
+            return jsonify({"error": "Anthropic API key is required"}), 400
+        
+        # Test just the ticket analysis part
+        agent = ClaudeCodeAgent("", anthropic_api_key)
+        analysis = agent.analyze_ticket(ticket_description, "Sample repository with src/ directory")
+        
+        return jsonify({
+            "success": True,
+            "analysis": {
+                "title": analysis.title,
+                "description": analysis.description,
+                "requirements": analysis.requirements,
+                "files_to_modify": analysis.files_to_modify,
+                "implementation_plan": analysis.implementation_plan,
+                "estimated_complexity": analysis.estimated_complexity
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=4000)
