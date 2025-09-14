@@ -57,21 +57,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
   const countdownTimerRef = useRef<number | null>(null);
 
   const cleanup = useCallback(() => {
-    if (streams.screenStream) {
-      streams.screenStream.getTracks().forEach((track) => track.stop());
-    }
-    if (streams.webcamStream) {
-      streams.webcamStream.getTracks().forEach((track) => track.stop());
-    }
-    if (streams.combinedStream) {
-      streams.combinedStream.getTracks().forEach((track) => track.stop());
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-    mediaRecorderRef.current = null;
-
+    // Clear timers first to prevent any race conditions
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -82,12 +68,31 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       countdownTimerRef.current = null;
     }
 
+    // Stop media streams
+    if (streams.screenStream) {
+      streams.screenStream.getTracks().forEach((track) => track.stop());
+    }
+    if (streams.webcamStream) {
+      streams.webcamStream.getTracks().forEach((track) => track.stop());
+    }
+    if (streams.combinedStream) {
+      streams.combinedStream.getTracks().forEach((track) => track.stop());
+    }
+
+    // Stop media recorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
+
+    // Reset streams
     setStreams({
       screenStream: null,
       webcamStream: null,
       combinedStream: null,
     });
 
+    // Reset state
     setState((prev) => ({
       ...prev,
       isRecording: false,
@@ -521,6 +526,17 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
       mediaRecorder.onstart = () => {
         console.log("🎬 MediaRecorder started - beginning countdown display");
+        
+        // Clear any existing timers before starting new ones
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        
         setState((prev) => ({
           ...prev,
           isRecording: true,
@@ -536,31 +552,35 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
             const newCountdown = prev.countdown - 1;
 
             if (newCountdown <= 0) {
+              // Clear countdown timer
               if (countdownTimerRef.current) {
                 clearInterval(countdownTimerRef.current);
                 countdownTimerRef.current = null;
               }
+              
               // Start the recording timer after countdown
-              timerRef.current = window.setInterval(() => {
-                setState((prevState) => {
-                  const newRecordingTime = prevState.recordingTime + 1;
+              if (!timerRef.current) {
+                timerRef.current = window.setInterval(() => {
+                  setState((prevState) => {
+                    const newRecordingTime = prevState.recordingTime + 1;
 
-                  // Request data every 5 seconds to ensure we're getting chunks
-                  if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && newRecordingTime % 5 === 0) {
-                    try {
-                      mediaRecorderRef.current.requestData();
-                      console.log("🔄 Requested data chunk at", newRecordingTime, "seconds");
-                    } catch (e) {
-                      console.warn("Could not request data:", e);
+                    // Request data every 5 seconds to ensure we're getting chunks
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && newRecordingTime % 5 === 0) {
+                      try {
+                        mediaRecorderRef.current.requestData();
+                        console.log("🔄 Requested data chunk at", newRecordingTime, "seconds");
+                      } catch (e) {
+                        console.warn("Could not request data:", e);
+                      }
                     }
-                  }
 
-                  return {
-                    ...prevState,
-                    recordingTime: newRecordingTime,
-                  };
-                });
-              }, 1000);
+                    return {
+                      ...prevState,
+                      recordingTime: newRecordingTime,
+                    };
+                  });
+                }, 1000);
+              }
 
               return { ...prev, isCountingDown: false, countdown: 0 };
             }
