@@ -71,6 +71,7 @@ import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "
 import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
 import type { S3VideoMetadata, TicketData } from "../utils/s3Upload";
 import { generateThumbnailFromBlob, generateThumbnailFromUrl, createPlaceholderThumbnail } from "../utils/videoThumbnails";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -1118,12 +1119,24 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
+      {/* Header with Back Button and Dark Mode Toggle */}
       {onNavigateToLanding && (
         <Box p={4}>
-          <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
-            Back to Home
-          </Button>
+          <HStack justify="space-between" w="full">
+            <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
+              Back to Home
+            </Button>
+            <DarkModeToggle />
+          </HStack>
+        </Box>
+      )}
+      
+      {/* If no back button, just show dark mode toggle in top right */}
+      {!onNavigateToLanding && (
+        <Box p={4}>
+          <HStack justify="flex-end" w="full">
+            <DarkModeToggle />
+          </HStack>
         </Box>
       )}
 
