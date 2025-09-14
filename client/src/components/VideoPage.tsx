@@ -1214,44 +1214,75 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
             </Box>
           </VStack>
         ) : (
-          <VStack spacing={6}>
-            <Box p={8} bg="green.50" borderRadius="2xl" borderWidth="2px" borderColor="green.200" shadow="lg">
-              <VStack spacing={4}>
-                <Text fontSize="lg" color="green.700" fontWeight="medium">
-                  📹 Recording Setup Active
-                </Text>
-                <Text fontSize="md" color="gray.600" textAlign="center" maxW="400px">
-                  Position your webcam overlay where you'd like it to appear, then click Record to start capturing your screen.
-                </Text>
+          <VStack spacing={6} w="full" maxW="1200px">
+            {/* Recording Setup with iframe in top right */}
+            <Box position="relative" w="full">
+              <HStack spacing={8} align="start" w="full">
+                {/* Recording Controls - Left Side */}
+                <Box flex="1">
+                  <Box p={8} bg="green.50" borderRadius="2xl" borderWidth="2px" borderColor="green.200" shadow="lg">
+                    <VStack spacing={4}>
+                      <Text fontSize="lg" color="green.700" fontWeight="medium">
+                        📹 Recording Setup Active
+                      </Text>
+                      <Text fontSize="md" color="gray.600" textAlign="center" maxW="400px">
+                        Position your webcam overlay where you'd like it to appear, then click Record to start capturing your screen.
+                      </Text>
 
-                <Button
-                  colorScheme={state.isRecording ? "red" : "green"}
-                  size="xl"
-                  h="80px"
-                  px="60px"
-                  fontSize="2xl"
-                  fontWeight="bold"
-                  rightIcon={<Icon as={state.isRecording ? FiVideo : FiCamera} w={8} h={8} />}
-                  onClick={state.isRecording ? handleStopRecording : () => startCountdownAndRecord()}
-                  isLoading={state.isCountingDown || state.isPreparing}
-                  loadingText={state.isCountingDown ? `Starting in ${state.countdown}...` : "Preparing..."}
-                  shadow="lg"
-                  borderRadius="xl"
-                  _hover={{
-                    transform: "scale(1.05)",
-                  }}>
-                  {state.isRecording ? "Stop Recording" : "Record"}
-                </Button>
+                      <Button
+                        colorScheme={state.isRecording ? "red" : "green"}
+                        size="xl"
+                        h="80px"
+                        px="60px"
+                        fontSize="2xl"
+                        fontWeight="bold"
+                        rightIcon={<Icon as={state.isRecording ? FiVideo : FiCamera} w={8} h={8} />}
+                        onClick={state.isRecording ? handleStopRecording : () => startCountdownAndRecord()}
+                        isLoading={state.isCountingDown || state.isPreparing}
+                        loadingText={state.isCountingDown ? `Starting in ${state.countdown}...` : "Preparing..."}
+                        shadow="lg"
+                        borderRadius="xl"
+                        _hover={{
+                          transform: "scale(1.05)",
+                        }}>
+                        {state.isRecording ? "Stop Recording" : "Record"}
+                      </Button>
 
-                {state.isRecording && (
-                  <HStack spacing={2}>
-                    <Box w={3} h={3} bg="red.500" borderRadius="full" animation="pulse 2s infinite" />
-                    <Text fontSize="md" color="red.600" fontWeight="bold">
-                      Recording in progress...
-                    </Text>
-                  </HStack>
-                )}
-              </VStack>
+                      {state.isRecording && (
+                        <HStack spacing={2}>
+                          <Box w={3} h={3} bg="red.500" borderRadius="full" animation="pulse 2s infinite" />
+                          <Text fontSize="md" color="red.600" fontWeight="bold">
+                            Recording in progress...
+                          </Text>
+                        </HStack>
+                      )}
+                    </VStack>
+                  </Box>
+                </Box>
+
+                {/* Miniblox iframe - Right Side */}
+                <Box flex="1" minH="400px">
+                  <Box
+                    w="full"
+                    h="400px"
+                    borderRadius="2xl"
+                    borderWidth="2px"
+                    borderColor="purple.200"
+                    shadow="lg"
+                    overflow="hidden"
+                    bg="white">
+                    <iframe
+                      src="https://miniblox.io"
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      title="Miniblox.io"
+                      style={{ borderRadius: '1rem' }}
+                      allowFullScreen
+                    />
+                  </Box>
+                </Box>
+              </HStack>
             </Box>
           </VStack>
         )}
