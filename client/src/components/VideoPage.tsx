@@ -18,7 +18,6 @@ import {
   useToast,
   Text,
   SimpleGrid,
-  Flex,
   Textarea,
   Progress,
   Alert,
@@ -27,7 +26,7 @@ import {
   HStack,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 
 // API function to call Flask analyze_video endpoint
@@ -98,6 +97,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const [enhancementContext, setEnhancementContext] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhancedTicket, setEnhancedTicket] = useState<any>(null);
+  const [currentTitle, setCurrentTitle] = useState("");
+  const [currentDescription, setCurrentDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Dynamic video collection state
   interface VideoItem {
@@ -130,7 +133,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const { listState, refreshVideoList, deleteVideo: deleteS3Video, isConfigured: isS3ListConfigured } = useS3VideoList();
 
   // S3 ticket persistence hook
-  const { saveTicket, loadTicket, deleteTicket: deleteS3Ticket, isConfigured: isS3TicketConfigured } = useS3Ticket();
+  const { saveTicket, loadTicket, deleteTicket: deleteS3Ticket, updateTicket, isConfigured: isS3TicketConfigured } = useS3Ticket();
 
   // Helper function to convert S3 video to VideoItem format
   const convertS3VideoToVideoItem = useCallback(
@@ -872,6 +875,106 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const resetEnhancement = () => {
     setEnhancedTicket(null);
     setEnhancementContext("");
+  };
+
+  // Initialize current values when ticket changes
+  const initializeCurrentValues = () => {
+    const ticketToUse = enhancedTicket || selectedTicket;
+    if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
+      setCurrentTitle(ticketToUse.ticket.title);
+      setCurrentDescription(ticketToUse.ticket.description);
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  // Initialize values when selectedTicket or enhancedTicket changes
+  React.useEffect(() => {
+    initializeCurrentValues();
+  }, [selectedTicket, enhancedTicket]);
+
+  // Function to auto-save changes
+  const autoSaveChanges = async () => {
+    if (!selectedTicket || !currentTitle.trim() || !currentDescription.trim() || !hasUnsavedChanges) {
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Find the video filename for S3 update
+      const videoKey = Object.keys(videoTickets).find(key => videoTickets[key] === selectedTicket);
+      if (!videoKey) {
+        throw new Error("Could not find associated video for this ticket");
+      }
+
+      // Extract filename from S3 key or use the key itself
+      const keyParts = videoKey.split("/");
+      const filename = keyParts[keyParts.length - 1];
+
+      // Update ticket in S3
+      if (isS3TicketConfigured) {
+        const updateResult = await updateTicket(filename, currentTitle, currentDescription);
+        
+        if (!updateResult.success) {
+          throw new Error(updateResult.error || "Failed to save to S3");
+        }
+      }
+
+      // Update local state
+      const updatedTicket = {
+        ...selectedTicket,
+        ticket: {
+          ...selectedTicket.ticket,
+          title: currentTitle,
+          description: currentDescription,
+        },
+      };
+
+      // Update the ticket in local state
+      setVideoTickets(prev => ({
+        ...prev,
+        [videoKey]: updatedTicket,
+      }));
+
+      // Update selected ticket and enhanced ticket if it exists
+      setSelectedTicket(updatedTicket);
+      if (enhancedTicket) {
+        setEnhancedTicket(updatedTicket);
+      }
+
+      setHasUnsavedChanges(false);
+
+      toast({
+        title: "Saved!",
+        description: "Changes saved automatically",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error("Error auto-saving ticket:", error);
+      toast({
+        title: "Auto-save Failed",
+        description: "Changes could not be saved automatically",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle title change
+  const handleTitleChange = (value: string) => {
+    setCurrentTitle(value);
+    setHasUnsavedChanges(true);
+  };
+
+  // Handle description change
+  const handleDescriptionChange = (value: string) => {
+    setCurrentDescription(value);
+    setHasUnsavedChanges(true);
   };
 
   return (
@@ -1643,135 +1746,172 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         onClose={() => {
           onTicketResultModalClose();
           resetEnhancement();
+          setHasUnsavedChanges(false);
         }}
-        size="xl">
+        size="lg">
         <ModalOverlay />
         <ModalContent maxH="90vh" overflowY="auto">
           <ModalHeader>
-            <Flex justify="space-between" align="center">
-              <Text>🎉 Generated Ticket</Text>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const ticketToUse = enhancedTicket || selectedTicket;
-                  if (ticketToUse) {
-                    let copyText = "";
-
-                    if (ticketToUse.success && ticketToUse.ticket) {
-                      copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}\n\nVideo ID: ${ticketToUse.video_id}\nIndex ID: ${ticketToUse.index_id}`;
-                    } else if (ticketToUse.raw_response) {
-                      copyText = `Raw Analysis Result:\n${ticketToUse.raw_response}`;
-                    } else {
-                      copyText = "Analysis completed but no ticket data was returned.";
-                    }
-
-                    navigator.clipboard
-                      .writeText(copyText)
-                      .then(() => {
-                        toast({
-                          title: "Copied!",
-                          description: "Ticket content copied to clipboard",
-                          status: "success",
-                          duration: 2000,
-                          isClosable: true,
-                        });
-                      })
-                      .catch(() => {
-                        toast({
-                          title: "Copy Failed",
-                          description: "Could not copy to clipboard",
-                          status: "error",
-                          duration: 3000,
-                          isClosable: true,
-                        });
-                      });
-                  }
-                }}
-                leftIcon={<Icon as={FiCopy} />}
-                mr={8}>
-                Copy
-              </Button>
-            </Flex>
+            <Text>🎉 Generated Ticket</Text>
           </ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody py={4}>
             {selectedTicket && (
-              <VStack spacing={6} align="start">
-                {/* Enhancement Form */}
+              <VStack spacing={4} align="start">
+                {/* Enhancement Form - Collapsed by default */}
                 {selectedTicket.success && selectedTicket.ticket && (
-                  <Box w="full" p={4} bg="blue.50" borderRadius="lg" borderWidth="1px" borderColor="blue.200">
-                    <VStack spacing={4} align="start">
-                      <VStack spacing={2} align="start">
-                        <Text fontWeight="bold" color="blue.700" fontSize="md">
-                          🤖 Enhance with AI Context
+                  <Box w="full" p={3} bg="blue.50" borderRadius="md" borderWidth="1px" borderColor="blue.200">
+                    <VStack spacing={3} align="start">
+                      <HStack justify="space-between" w="full">
+                        <Text fontWeight="semibold" color="blue.700" fontSize="sm">
+                          🤖 AI Enhancement
                         </Text>
-                        <Text fontSize="sm" color="blue.600">
-                          Add additional context to improve the ticket title and description using Cohere AI
-                        </Text>
-                      </VStack>
-
-                      <Textarea
-                        placeholder="Add specific requirements, edge cases, acceptance criteria, or any additional context that would help improve this ticket..."
-                        value={enhancementContext}
-                        onChange={(e) => setEnhancementContext(e.target.value)}
-                        resize="vertical"
-                        minH="80px"
-                        bg="white"
-                        borderColor="blue.300"
-                        _focus={{
-                          borderColor: "blue.500",
-                          boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
-                        }}
-                      />
-
-                      <HStack spacing={3} w="full">
                         <Button
                           colorScheme="blue"
                           onClick={enhanceTicketWithContext}
                           isLoading={isEnhancing}
                           loadingText="Enhancing..."
                           isDisabled={!enhancementContext.trim()}
-                          leftIcon={<Icon as={FiCloud} />}
-                          size="sm">
-                          Enhance Ticket
+                          size="xs">
+                          Enhance
                         </Button>
-                        {enhancedTicket && (
-                          <Button variant="outline" colorScheme="gray" onClick={resetEnhancement} size="sm">
-                            Reset to Original
-                          </Button>
-                        )}
                       </HStack>
+                      <Textarea
+                        placeholder="Add context to improve this ticket..."
+                        value={enhancementContext}
+                        onChange={(e) => setEnhancementContext(e.target.value)}
+                        resize="vertical"
+                        minH="60px"
+                        bg="white"
+                        borderColor="blue.300"
+                        fontSize="sm"
+                        _focus={{
+                          borderColor: "blue.500",
+                          boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                        }}
+                      />
+                      {enhancedTicket && (
+                        <Button variant="ghost" colorScheme="gray" onClick={resetEnhancement} size="xs">
+                          Reset to Original
+                        </Button>
+                      )}
                     </VStack>
                   </Box>
                 )}
 
                 {/* Ticket Display */}
                 {selectedTicket.success && selectedTicket.ticket ? (
-                  <VStack spacing={3} align="start" w="full">
-                    {enhancedTicket && (
-                      <Box w="full" p={2} bg="green.100" borderRadius="md" borderLeft="4px solid" borderLeftColor="green.500">
-                        <Text fontSize="sm" color="green.700" fontWeight="medium">
-                          ✨ Enhanced with AI - showing improved version
-                        </Text>
-                      </Box>
-                    )}
+                  <VStack spacing={2} align="start" w="full">
+                    {/* Status and Action Buttons */}
+                    <HStack justify="space-between" align="center" w="full">
+                      <HStack spacing={2}>
+                        {enhancedTicket && (
+                          <Text fontSize="xs" color="green.600" fontWeight="medium" bg="green.50" px={2} py={1} borderRadius="md">
+                            ✨ Enhanced
+                          </Text>
+                        )}
+                        {hasUnsavedChanges && (
+                          <Text fontSize="xs" color="orange.600" fontWeight="medium" bg="orange.50" px={2} py={1} borderRadius="md">
+                            {isSaving ? "💾 Saving..." : "⚠️ Unsaved"}
+                          </Text>
+                        )}
+                      </HStack>
+                      <HStack spacing={1}>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => {
+                            const ticketToUse = enhancedTicket || selectedTicket;
+                            if (ticketToUse) {
+                              let copyText = "";
 
-                    <Box p={4} bg="gray.50" borderRadius="md" w="full">
+                              if (ticketToUse.success && ticketToUse.ticket) {
+                                copyText = `# ${currentTitle || ticketToUse.ticket.title}\n\n${currentDescription || ticketToUse.ticket.description}\n\n---\n**Video ID:** ${ticketToUse.video_id}\n**Index ID:** ${ticketToUse.index_id}`;
+                              } else if (ticketToUse.raw_response) {
+                                copyText = `# Raw Analysis Result\n\n\`\`\`\n${ticketToUse.raw_response}\n\`\`\``;
+                              } else {
+                                copyText = "Analysis completed but no ticket data was returned.";
+                              }
+
+                              navigator.clipboard
+                                .writeText(copyText)
+                                .then(() => {
+                                  toast({
+                                    title: "Copied!",
+                                    description: "Ticket content copied as markdown",
+                                    status: "success",
+                                    duration: 2000,
+                                    isClosable: true,
+                                  });
+                                })
+                                .catch(() => {
+                                  toast({
+                                    title: "Copy Failed",
+                                    description: "Could not copy to clipboard",
+                                    status: "error",
+                                    duration: 3000,
+                                    isClosable: true,
+                                  });
+                                });
+                            }
+                          }}
+                          leftIcon={<Icon as={FiCopy} w={3} h={3} />}>
+                          Copy
+                        </Button>
+                      </HStack>
+                    </HStack>
+
+                    <Box p={3} bg="white" borderRadius="md" w="full" borderWidth="1px" borderColor="gray.200">
                       <VStack spacing={3} align="start">
-                        <Text fontWeight="bold" color="purple.600" fontSize="lg">
-                          Title:
-                        </Text>
-                        <Text fontSize="md">{(enhancedTicket || selectedTicket).ticket.title}</Text>
-                        <Text fontWeight="bold" color="purple.600" fontSize="lg" mt={2}>
-                          Description:
-                        </Text>
-                        <Text fontSize="md" whiteSpace="pre-wrap">
-                          {(enhancedTicket || selectedTicket).ticket.description}
-                        </Text>
+                        <VStack spacing={1} align="start" w="full">
+                          <Text fontWeight="semibold" color="gray.700" fontSize="sm">
+                            Title
+                          </Text>
+                          <Input
+                            value={currentTitle}
+                            onChange={(e) => handleTitleChange(e.target.value)}
+                            onBlur={autoSaveChanges}
+                            placeholder="Enter ticket title..."
+                            borderColor="gray.300"
+                            _focus={{
+                              borderColor: "blue.500",
+                              boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                            }}
+                            fontSize="sm"
+                            size="sm"
+                            bg="white"
+                          />
+                        </VStack>
+
+                        <VStack spacing={1} align="start" w="full">
+                          <HStack justify="space-between" w="full">
+                            <Text fontWeight="semibold" color="gray.700" fontSize="sm">
+                              Description
+                            </Text>
+                            <Text fontSize="xs" color="gray.500">
+                              Markdown supported
+                            </Text>
+                          </HStack>
+                          <Textarea
+                            value={currentDescription}
+                            onChange={(e) => handleDescriptionChange(e.target.value)}
+                            onBlur={autoSaveChanges}
+                            placeholder="Enter ticket description... (supports **bold**, *italic*, `code`, etc.)"
+                            borderColor="gray.300"
+                            _focus={{
+                              borderColor: "blue.500",
+                              boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)",
+                            }}
+                            resize="vertical"
+                            minH="120px"
+                            fontSize="sm"
+                            bg="white"
+                            fontFamily="mono"
+                          />
+                        </VStack>
                       </VStack>
                     </Box>
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="xs" color="gray.400" mt={1}>
                       Video ID: {selectedTicket.video_id} | Index ID: {selectedTicket.index_id}
                     </Text>
                   </VStack>
@@ -1793,133 +1933,117 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               </VStack>
             )}
           </ModalBody>
-          <ModalFooter>
-            <Button
-              colorScheme="gray"
-              mr={3}
-              onClick={async () => {
-                const ticketToUse = enhancedTicket || selectedTicket;
-                if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
-                  try {
-                    const response = await fetch("http://localhost:4000/create-jira-ticket", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        title: ticketToUse.ticket.title,
-                        description: ticketToUse.ticket.description,
-                      }),
-                    });
-
-                    const result = await response.json();
-
-                    if (result.self) {
-                      toast({
-                        title: "Jira Ticket Created!",
-                        description: `Ticket ${result.key} created successfully`,
-                        status: "success",
-                        duration: 5000,
-                        isClosable: true,
+          <ModalFooter py={3}>
+            <HStack spacing={2} w="full" justify="center">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const ticketToUse = enhancedTicket || selectedTicket;
+                  if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
+                    try {
+                      const response = await fetch("http://localhost:4000/create-jira-ticket", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          title: ticketToUse.ticket.title,
+                          description: ticketToUse.ticket.description,
+                        }),
                       });
 
-                      // Open the Jira ticket in a new tab
-                      window.open(result.self, "_blank");
-                    } else {
+                      const result = await response.json();
+
+                      if (result.self) {
+                        toast({
+                          title: "Jira Ticket Created!",
+                          description: `Ticket ${result.key} created successfully`,
+                          status: "success",
+                          duration: 5000,
+                          isClosable: true,
+                        });
+
+                        window.open(result.self, "_blank");
+                      } else {
+                        toast({
+                          title: "Failed to Create Jira Ticket",
+                          description: result.error || "Unknown error occurred",
+                          status: "error",
+                          duration: 5000,
+                          isClosable: true,
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Jira API error:", error);
                       toast({
-                        title: "Failed to Create Jira Ticket",
-                        description: result.error || "Unknown error occurred",
+                        title: "Error",
+                        description: "Failed to connect to Jira API",
                         status: "error",
                         duration: 5000,
                         isClosable: true,
                       });
                     }
-                  } catch (error) {
-                    console.error("Jira API error:", error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to connect to Jira API",
-                      status: "error",
-                      duration: 5000,
-                      isClosable: true,
-                    });
                   }
-                } else {
-                  toast({
-                    title: "No Ticket Data",
-                    description: "Please generate a ticket first",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                }
-              }}>
-              Open in Jira
-            </Button>
-            <Button
-              colorScheme="gray"
-              mr={3}
-              onClick={async () => {
-                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
-                  try {
-                    const response = await fetch("http://localhost:4000/create-linear-issue", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        title: selectedTicket.ticket.title,
-                        description: selectedTicket.ticket.description,
-                      }),
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success && result.url) {
-                      toast({
-                        title: "Linear Issue Created!",
-                        description: `Issue ${result.identifier} created successfully`,
-                        status: "success",
-                        duration: 5000,
-                        isClosable: true,
+                }}>
+                Jira
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                    try {
+                      const response = await fetch("http://localhost:4000/create-linear-issue", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          title: selectedTicket.ticket.title,
+                          description: selectedTicket.ticket.description,
+                        }),
                       });
 
-                      // Open the Linear issue in a new tab
-                      window.open(result.url, "_blank");
-                    } else {
+                      const result = await response.json();
+
+                      if (result.success && result.url) {
+                        toast({
+                          title: "Linear Issue Created!",
+                          description: `Issue ${result.identifier} created successfully`,
+                          status: "success",
+                          duration: 5000,
+                          isClosable: true,
+                        });
+
+                        window.open(result.url, "_blank");
+                      } else {
+                        toast({
+                          title: "Failed to Create Linear Issue",
+                          description: result.error || "Unknown error occurred",
+                          status: "error",
+                          duration: 5000,
+                          isClosable: true,
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Linear API error:", error);
                       toast({
-                        title: "Failed to Create Linear Issue",
-                        description: result.error || "Unknown error occurred",
+                        title: "Error",
+                        description: "Failed to connect to Linear API",
                         status: "error",
                         duration: 5000,
                         isClosable: true,
                       });
                     }
-                  } catch (error) {
-                    console.error("Linear API error:", error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to connect to Linear API",
-                      status: "error",
-                      duration: 5000,
-                      isClosable: true,
-                    });
                   }
-                } else {
-                  toast({
-                    title: "No Ticket Data",
-                    description: "Please generate a ticket first",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                }
-              }}>
-              Open in Linear
-            </Button>
-            <Button colorScheme="purple" onClick={onTicketResultModalClose}>
-              Close
-            </Button>
+                }}>
+                Linear
+              </Button>
+              <Button size="sm" colorScheme="purple" onClick={onTicketResultModalClose}>
+                Done
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>

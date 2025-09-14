@@ -393,6 +393,76 @@ export class S3VideoUploader {
     }
   }
 
+  // Update existing ticket data in S3 (preserves existing data, updates title and description)
+  async updateTicketData(videoFilename: string, updatedTitle: string, updatedDescription: string): Promise<S3UploadResult> {
+    if (!this.s3Client) {
+      return {
+        success: false,
+        error: "S3 client not initialized. Please configure AWS credentials.",
+      };
+    }
+
+    try {
+      // First, try to load existing ticket data
+      const existingTicketResult = await this.loadTicketData(videoFilename);
+      
+      let ticketData: TicketData;
+      const now = new Date().toISOString();
+
+      if (existingTicketResult.success && existingTicketResult.ticketData) {
+        // Update existing ticket data
+        ticketData = {
+          ...existingTicketResult.ticketData,
+          title: updatedTitle,
+          description: updatedDescription,
+          updatedAt: now,
+        };
+      } else {
+        // Create new ticket data if none exists
+        ticketData = {
+          title: updatedTitle,
+          description: updatedDescription,
+          videoId: videoFilename,
+          indexId: '',
+          createdAt: now,
+          updatedAt: now,
+        };
+      }
+
+      const key = this.generateTicketKey(videoFilename);
+      const jsonContent = JSON.stringify(ticketData, null, 2);
+
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: jsonContent,
+        ContentType: "application/json",
+        Metadata: {
+          "uploaded-by": "ticketfairy-client",
+          "upload-timestamp": now,
+          "video-filename": videoFilename,
+          "enhanced": "true",
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const url = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+
+      return {
+        success: true,
+        url,
+        key,
+      };
+    } catch (error) {
+      console.error("S3 ticket update error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update ticket data",
+      };
+    }
+  }
+
   // Delete ticket data from S3
   async deleteTicketData(videoFilename: string): Promise<S3DeleteResult> {
     if (!this.s3Client) {

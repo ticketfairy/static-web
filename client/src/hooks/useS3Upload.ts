@@ -33,6 +33,7 @@ export interface UseS3TicketReturn {
   saveTicket: (videoFilename: string, ticketData: Omit<TicketData, "createdAt" | "updatedAt">) => Promise<S3UploadResult>;
   loadTicket: (videoFilename: string) => Promise<S3TicketResult>;
   deleteTicket: (videoFilename: string) => Promise<S3DeleteResult>;
+  updateTicket: (videoFilename: string, title: string, description: string) => Promise<S3UploadResult>;
   isConfigured: boolean;
 }
 
@@ -269,10 +270,32 @@ export const useS3Ticket = (customUploader?: S3VideoUploader): UseS3TicketReturn
     [uploader, isConfigured]
   );
 
+  const updateTicket = useCallback(
+    async (videoFilename: string, title: string, description: string): Promise<S3UploadResult> => {
+      if (!isConfigured) {
+        return {
+          success: false,
+          error: "S3 not configured. Please set up AWS credentials.",
+        };
+      }
+
+      try {
+        return await uploader.updateTicketData(videoFilename, title, description);
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to update ticket",
+        };
+      }
+    },
+    [uploader, isConfigured]
+  );
+
   return {
     saveTicket,
     loadTicket,
     deleteTicket,
+    updateTicket,
     isConfigured,
   };
 };
