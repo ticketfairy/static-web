@@ -109,6 +109,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     createdAt: Date;
     s3Url?: string;
     s3Key?: string;
+    filename?: string; // Original filename for display
     isUploading?: boolean;
     uploadProgress?: number;
   }
@@ -134,8 +135,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       const keyParts = s3Video.key.split("/");
       const filename = keyParts[keyParts.length - 1];
 
-      // Try to extract timestamp from filename
-      let title = filename;
+      // Check if we have a ticket for this video and use its title
+      const videoTicket = videoTickets[s3Video.key];
+      let title = filename; // Default to filename
+      
+      if (videoTicket && videoTicket.success && videoTicket.ticket && videoTicket.ticket.title) {
+        title = videoTicket.ticket.title;
+      }
+
       let createdAt = s3Video.lastModified;
 
       // Generate a reasonable duration estimate based on file size (very rough)
@@ -160,9 +167,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         createdAt,
         s3Url: s3Video.url,
         s3Key: s3Video.key,
+        filename, // Store original filename for display
       };
     },
-    [s3VideoThumbnails]
+    [s3VideoThumbnails, videoTickets]
   );
 
   // Merge local videos with S3 videos
@@ -945,9 +953,16 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     </Box>
 
                     <VStack spacing={2} align="start">
-                      <Text fontWeight="bold" fontSize="lg" textAlign="left">
-                        {video.title}
-                      </Text>
+                      <VStack spacing={1} align="start">
+                        <Text fontWeight="bold" fontSize="lg" textAlign="left">
+                          {video.title}
+                        </Text>
+                        {video.filename && video.filename !== video.title && (
+                          <Text color="gray.500" fontSize="xs" textAlign="left">
+                            {video.filename}
+                          </Text>
+                        )}
+                      </VStack>
                       <Text color="gray.600" fontSize="sm" textAlign="left">
                         {video.description}
                       </Text>
