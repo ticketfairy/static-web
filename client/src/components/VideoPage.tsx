@@ -998,7 +998,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                             textAlign="center"
                             lineHeight="1.1"
                         >
-                            ✨ Ticket Fairy Studio ✨
+                            ✨ Mom's House ✨
                         </Heading>
                     </VStack>
 
