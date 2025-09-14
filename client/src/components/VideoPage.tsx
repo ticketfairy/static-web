@@ -24,6 +24,7 @@ import {
   AlertIcon,
   Code,
   HStack,
+  Flex,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
@@ -71,6 +72,7 @@ import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "
 import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
 import type { S3VideoMetadata, TicketData } from "../utils/s3Upload";
 import { generateThumbnailFromBlob, generateThumbnailFromUrl, createPlaceholderThumbnail } from "../utils/videoThumbnails";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -1116,14 +1118,21 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
-      {onNavigateToLanding && (
-        <Box p={4}>
-          <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
-            Back to Home
-          </Button>
-        </Box>
-      )}
+      {/* Header */}
+      <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1400px" mx="auto" position="sticky" top="0" bg={bgColor} zIndex="1000">
+        <Flex align="center" mr={5}>
+          {onNavigateToLanding && (
+            <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding} mr={4}>
+              Back to Home
+            </Button>
+          )}
+          <Heading as="h1" size="lg" letterSpacing={"tighter"} color="purple.500" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
+            🧚 Ticket Fairy Studio
+          </Heading>
+        </Flex>
+
+        <DarkModeToggle />
+      </Flex>
 
       {/* Video Page Content */}
       <VStack spacing={12} textAlign="center" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">
