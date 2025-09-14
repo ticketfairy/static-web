@@ -1801,7 +1801,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 const ticketToUse = enhancedTicket || selectedTicket;
                 if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
                   try {
-                    const response = await fetch("http://localhost:4000/create-linear-issue", {
+                    const response = await fetch("http://localhost:4000/create-jira-ticket", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
