@@ -48,6 +48,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: |
-            --max-turns 10
+            --max-turns 50
             --model claude-sonnet-4-20250514
           # Responds to @claude mentions in comments automatically
