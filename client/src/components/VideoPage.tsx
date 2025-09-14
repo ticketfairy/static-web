@@ -130,7 +130,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   // Helper function to convert S3 video to VideoItem format
   const convertS3VideoToVideoItem = useCallback(
     (s3Video: S3VideoMetadata): VideoItem => {
-      // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.webm")
+      // Extract info from S3 key (e.g., "videos/2025-09-13T19-12-46-728Z-yopjxw.mov")
       const keyParts = s3Video.key.split("/");
       const filename = keyParts[keyParts.length - 1];
 
@@ -711,7 +711,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           isClosable: true,
         });
 
-        const baseFilename = "Screen Recording.webm";
+        const baseFilename = "Screen Recording.mov";
         const uniqueFilename = generateUniqueFilename(baseFilename);
 
         const newVideo = await addVideoToCollection(recordingBlob, uniqueFilename);

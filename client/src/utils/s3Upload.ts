@@ -121,11 +121,18 @@ export class S3VideoUploader {
       // Convert blob to ArrayBuffer for upload
       const arrayBuffer = await videoBlob.arrayBuffer();
 
+      // Determine content type based on filename or blob type
+      let contentType = videoBlob.type;
+      if (!contentType || contentType === "video/webm") {
+        // If no type or webm, determine from filename extension
+        contentType = this.getContentTypeFromExtension(filename || "recording.mov");
+      }
+
       const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: key,
         Body: new Uint8Array(arrayBuffer),
-        ContentType: videoBlob.type || "video/webm",
+        ContentType: contentType,
         Metadata: {
           "uploaded-by": "ticketfairy-client",
           "upload-timestamp": new Date().toISOString(),
@@ -195,7 +202,7 @@ export class S3VideoUploader {
         return (
           object.Key &&
           object.Key !== prefix &&
-          (object.Key.endsWith(".webm") || object.Key.endsWith(".mp4") || object.Key.endsWith(".mov") || object.Key.endsWith(".avi"))
+          (object.Key.endsWith(".mov") || object.Key.endsWith(".mp4") || object.Key.endsWith(".webm") || object.Key.endsWith(".avi"))
         );
       })
         .map((object) => ({
@@ -414,16 +421,16 @@ export class S3VideoUploader {
   private getContentTypeFromExtension(key: string): string {
     const extension = key.split(".").pop()?.toLowerCase();
     switch (extension) {
-      case "webm":
-        return "video/webm";
-      case "mp4":
-        return "video/mp4";
       case "mov":
         return "video/quicktime";
+      case "mp4":
+        return "video/mp4";
+      case "webm":
+        return "video/webm";
       case "avi":
         return "video/x-msvideo";
       default:
-        return "video/webm";
+        return "video/quicktime"; // Default to MOV format
     }
   }
 }

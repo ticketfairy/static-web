@@ -416,17 +416,17 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         mediaRecorderRef.current = null;
       }
 
-      // Use most compatible formats first, then try MP4
+      // Prioritize MP4 format for MOV compatibility
       const options = [
-        { mimeType: "video/webm;codecs=vp8" }, // Most compatible
-        { mimeType: "video/webm" }, // Basic WebM
-        { mimeType: "video/mp4" }, // MP4 (limited browser support)
-        { mimeType: "video/webm;codecs=h264" }, // H.264 in WebM
+        { mimeType: "video/mp4" }, // MP4 (best for MOV compatibility)
+        { mimeType: "video/webm;codecs=h264" }, // H.264 in WebM (good fallback)
+        { mimeType: "video/webm;codecs=vp8" }, // VP8 WebM (fallback)
+        { mimeType: "video/webm" }, // Basic WebM (last resort)
         {}, // Browser default
       ];
 
-      let mediaRecorder = null;
-      let lastError = null;
+      let mediaRecorder: MediaRecorder | null = null;
+      let lastError: any = null;
 
       for (const option of options) {
         try {
@@ -639,7 +639,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       try {
         // FINAL stream check right before starting
         console.log("🔍 FINAL check - Stream active:", recordingStream.active, "Tracks:", recordingStream.getTracks().length);
-        
+
         if (!recordingStream.active) {
           console.error("❌ CRITICAL: Stream became inactive right before start!");
           throw new Error("Stream closed right before MediaRecorder start");
@@ -647,7 +647,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
         // Try different time slice approaches for better compatibility
         console.log("🚀 Attempting to start MediaRecorder with mimeType:", mediaRecorder.mimeType);
-        
+
         // Start with most reliable approach first - no time slice
         try {
           mediaRecorder.start(); // Start without time slice for maximum compatibility
@@ -667,7 +667,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
         console.error("❌ Failed to start MediaRecorder:", startError);
         console.error("❌ Stream status at failure:", {
           active: recordingStream.active,
-          tracks: recordingStream.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState }))
+          tracks: recordingStream.getTracks().map((t) => ({ kind: t.kind, readyState: t.readyState })),
         });
         throw new Error(`Failed to start recording: ${startError instanceof Error ? startError.message : "Unknown error"}`);
       }
@@ -717,8 +717,8 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
           return;
         }
 
-        // Use the mimeType from the recorder if available
-        const mimeType = recorder.mimeType || "video/webm";
+        // Use the mimeType from the recorder if available, prefer MP4 for MOV compatibility
+        const mimeType = recorder.mimeType || "video/mp4";
         console.log("🎬 Creating blob with mimeType:", mimeType);
 
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
