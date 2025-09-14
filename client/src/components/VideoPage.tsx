@@ -964,6 +964,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           },
         };
 
+        console.log("Enhanced ticket:", enhanced);
+
         setEnhancedTicket(enhanced);
 
         toast({
@@ -1786,7 +1788,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         videoBlob={videoToPlay?.blob}
         videoUrl={videoToPlay?.s3Url}
         showTicket={selectedTicket}
-        ticketData={selectedTicket}
+        ticketData={enhancedTicket || selectedTicket}
         onOpenTicket={() => onTicketModalOpen()}
         enhancementContext={videoToPlay?.id ? enhancementContexts[videoToPlay.id] || "" : ""}
         onEnhancementContextChange={(value) => handleEnhancementContextChange(value, videoToPlay?.id)}
