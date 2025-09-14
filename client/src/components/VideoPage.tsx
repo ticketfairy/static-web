@@ -26,7 +26,7 @@ import {
   Code,
   HStack,
 } from "@chakra-ui/react";
-import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy } from "react-icons/fi";
+import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 
@@ -138,7 +138,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       // Check if we have a ticket for this video and use its title
       const videoTicket = videoTickets[s3Video.key];
       let title = filename; // Default to filename
-      
+
       if (videoTicket && videoTicket.success && videoTicket.ticket && videoTicket.ticket.title) {
         title = videoTicket.ticket.title;
       }
@@ -896,7 +896,20 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       alignItems="center"
                       justifyContent="center"
                       position="relative"
-                      overflow="hidden">
+                      overflow="hidden"
+                      cursor={video.blob || video.s3Url ? "pointer" : "default"}
+                      onClick={video.blob || video.s3Url ? () => handlePlayVideo(video) : undefined}
+                      _hover={
+                        video.blob || video.s3Url
+                          ? {
+                              transform: "scale(1.02)",
+                              shadow: "lg",
+                              opacity: 0.9,
+                            }
+                          : {}
+                      }
+                      transition="all 0.2s ease-in-out"
+                      role="group">
                       {video.thumbnailUrl ? (
                         <Image
                           src={video.thumbnailUrl}
@@ -950,6 +963,23 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           ☁️ Uploading...
                         </Text>
                       )}
+                      {/* Play button overlay - only show on hover and when video is playable */}
+                      {(video.blob || video.s3Url) && (
+                        <Box
+                          position="absolute"
+                          top="50%"
+                          left="50%"
+                          transform="translate(-50%, -50%)"
+                          bg="blackAlpha.700"
+                          borderRadius="full"
+                          p={3}
+                          opacity={0}
+                          _groupHover={{ opacity: 1 }}
+                          transition="opacity 0.2s ease-in-out"
+                          pointerEvents="none">
+                          <Icon as={FiPlay} color="white" w={6} h={6} />
+                        </Box>
+                      )}
                     </Box>
 
                     <VStack spacing={2} align="start">
@@ -957,11 +987,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         <Text fontWeight="bold" fontSize="lg" textAlign="left">
                           {video.title}
                         </Text>
-                        {video.filename && video.filename !== video.title && (
-                          <Text color="gray.500" fontSize="xs" textAlign="left">
-                            {video.filename}
-                          </Text>
-                        )}
                       </VStack>
                       <Text color="gray.600" fontSize="sm" textAlign="left">
                         {video.description}
