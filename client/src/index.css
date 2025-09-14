@@ -28,7 +28,7 @@ a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer;
+  cursor: pointer;
 }
 a:hover {
   color: #535bf2;
@@ -40,12 +40,12 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24' transform='rotate(-90 16 16)'>🪄</text></svg>"), auto;
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><text y='36' font-size='36' transform='rotate(-90 24 24)'>🪄</text></svg>"), auto;
 }
 
-/* Sparkle cursor for hoverable elements */
+/* Regular cursor for hoverable elements */
 button, a, [role="button"], [tabindex], input, select, textarea, [onclick], [onmouseover] {
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer !important;
+  cursor: pointer !important;
 }
 
 h1 {
@@ -61,7 +61,7 @@ button {
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>✨</text></svg>"), pointer;
+  cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {

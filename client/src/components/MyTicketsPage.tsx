@@ -1,6 +1,7 @@
 import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Badge, Card, CardBody, CardHeader, HStack, Tag, TagLabel } from "@chakra-ui/react";
 import { FiVideo, FiCalendar, FiClock, FiTrash2, FiPlay, FiCopy } from "react-icons/fi";
 import { useTickets } from "../hooks/useTickets";
+import SparkleTrail from "./SparkleTrail";
 
 interface MyTicketsPageProps {
   onNavigateToLanding: () => void;
@@ -14,6 +15,7 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
 
   return (
     <Box bg={bgColor} minH="100vh">
+      <SparkleTrail />
       {/* Header */}
       <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1200px" mx="auto">
         <Flex align="center" mr={5}>
