@@ -32,12 +32,12 @@ Ensure the title is short, specific, and reflects the core task, while the descr
 }
 
 ### Guidelines:
-- Focus only on actionable developer tasks (ignore filler or unrelated conversation).
+- Ignore filler or unrelated conversation
 - Use plain, professional language suitable for a ticketing system.
-- Summarize user intent rather than transcribing verbatim.
-- If requirements are ambiguous, clearly state assumptions in the description.
+- If any numbers or specifics are mentioned in the video, include the specific number or spec
+- Write ticket in bullet point and make bulletpoints follow sections of What, Why, and How
+- If context is not mentioned in the video, leave the section empty, do not fill with any information that is NOT mentioned in the video
 """
-
 
 @app.route("/analyze-video", methods=["POST"])
 def analyze_video():

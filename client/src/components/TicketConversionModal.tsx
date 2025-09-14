@@ -99,13 +99,27 @@ export function TicketConversionModal({
       title: ticketName || 'Fix user authentication bug in login flow',
       description: `Based on the screen recording analysis, there appears to be an issue with the user authentication process.
 
+## **Problem Description**
 The video shows:
 - User attempting to log in with valid credentials
 - Login form submitting successfully
 - Unexpected redirect to error page instead of dashboard
 - No clear error message displayed to user
 
-This affects user experience and may be preventing legitimate users from accessing the application.`,
+## **Impact**
+This affects user experience and may be preventing legitimate users from accessing the application.
+
+## **Technical Details**
+- **Browser**: Chrome 120.0.0.0
+- **OS**: macOS 14.0
+- **Network**: No network errors detected
+- **Console**: No JavaScript errors visible
+
+## **Steps to Reproduce**
+1. Navigate to login page
+2. Enter valid credentials
+3. Click "Sign In" button
+4. Observe redirect behavior`,
       priority: 'High',
       type: 'Bug',
       estimatedTime: '2-3 hours',
