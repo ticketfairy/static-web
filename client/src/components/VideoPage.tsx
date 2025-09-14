@@ -66,6 +66,7 @@ import { TicketConversionModal } from "./TicketConversionModal";
 import { PermissionsPopup } from "./PermissionsPopup";
 import { ReadyToRecordModal } from "./ReadyToRecordModal";
 import ClaudeAgentModal from "./ClaudeAgentModal";
+import { GitHubIssueModal } from "./GitHubIssueModal";
 import { useSaveToVideos } from "./SaveToVideosButton";
 import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "../utils/recordingHelpers";
 import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
@@ -104,6 +105,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { isOpen: isClaudeAgentModalOpen, onOpen: onClaudeAgentModalOpen, onClose: onClaudeAgentModalClose } = useDisclosure();
+  const { isOpen: isGitHubIssueModalOpen, onOpen: onGitHubIssueModalOpen, onClose: onGitHubIssueModalClose } = useDisclosure();
 
   // Dynamic video collection state
   interface VideoItem {
@@ -2016,6 +2018,18 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 }}>
                 Linear
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const ticketToUse = enhancedTicket || selectedTicket;
+                  if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
+                    onGitHubIssueModalOpen();
+                  }
+                }}
+                isDisabled={!selectedTicket?.success || !selectedTicket?.ticket}>
+                GitHub
+              </Button>
               <Button size="sm" colorScheme="purple" onClick={onTicketResultModalClose}>
                 Done
               </Button>
@@ -2036,6 +2050,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               }
             : null
         }
+      />
+
+      {/* GitHub Issue Modal */}
+      <GitHubIssueModal
+        isOpen={isGitHubIssueModalOpen}
+        onClose={onGitHubIssueModalClose}
+        ticketTitle={(enhancedTicket || selectedTicket)?.ticket?.title || ""}
+        ticketDescription={(enhancedTicket || selectedTicket)?.ticket?.description || ""}
       />
     </Box>
   );

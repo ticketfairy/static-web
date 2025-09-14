@@ -10,6 +10,7 @@ import json
 import cohere
 from jira_integration import create_jira_ticket
 from linear_integration import create_linear_issue
+from github_integration import create_github_issue, get_repository_info
 from claude_agent import create_pr_from_ticket, ClaudeCodeAgent
 
 load_dotenv()
@@ -168,6 +169,63 @@ def create_linear_issue_endpoint():
 
         # Create Linear issue
         result = create_linear_issue(title, description, team_id)
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/create-github-issue", methods=["POST"])
+def create_github_issue_endpoint():
+    try:
+        # Get ticket data from request
+        data = request.get_json()
+        if not data or "title" not in data or "description" not in data or "repo_name" not in data:
+            return jsonify({"error": "title, description, and repo_name are required"}), 400
+
+        title = data["title"]
+        description = data["description"]
+        repo_name = data["repo_name"]
+        github_token = data.get("github_token", GITHUB_TOKEN)
+        labels = data.get("labels", [])  # Optional labels
+        assignees = data.get("assignees", [])  # Optional assignees
+
+        # Create GitHub issue
+        result = create_github_issue(
+            title=title,
+            description=description,
+            repo_name=repo_name,
+            github_token=github_token,
+            labels=labels,
+            assignees=assignees
+        )
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/github-repo-info", methods=["POST"])
+def github_repo_info_endpoint():
+    """Get repository information to validate access and check if issues are enabled"""
+    try:
+        data = request.get_json()
+        if not data or "repo_name" not in data:
+            return jsonify({"error": "repo_name is required"}), 400
+
+        repo_name = data["repo_name"]
+        github_token = data.get("github_token", GITHUB_TOKEN)
+
+        # Get repository info
+        result = get_repository_info(repo_name, github_token)
 
         if result.get("success"):
             return jsonify(result), 200
