@@ -68,9 +68,13 @@ class ClaudeCodeAgent:
             github_token: GitHub personal access token
             anthropic_api_key: Anthropic API key for Claude
         """
-        self.github = Github(github_token)
-        self.claude = anthropic.Anthropic(api_key=anthropic_api_key)
-        self.temp_dir = None
+        try:
+            self.github = Github(github_token) if github_token else None
+            self.claude = anthropic.Anthropic(api_key=anthropic_api_key)
+            self.temp_dir = None
+        except Exception as e:
+            print(f"Error initializing Claude Code Agent: {e}")
+            raise
         
     def analyze_ticket(self, ticket_description: str, repository_context: str = "") -> TicketAnalysis:
         """

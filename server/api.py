@@ -318,13 +318,20 @@ def generate_pr():
             return jsonify({"error": "Anthropic API key is required (set ANTHROPIC_API_KEY env var or provide in request)"}), 400
         
         # Generate PR using Claude agent
-        result = create_pr_from_ticket(
-            ticket_description=ticket_description,
-            repo_name=repo_name,
-            github_token=github_token,
-            anthropic_api_key=anthropic_api_key,
-            base_branch=base_branch
-        )
+        try:
+            result = create_pr_from_ticket(
+                ticket_description=ticket_description,
+                repo_name=repo_name,
+                github_token=github_token,
+                anthropic_api_key=anthropic_api_key,
+                base_branch=base_branch
+            )
+        except Exception as e:
+            print(f"Error in create_pr_from_ticket: {e}")
+            return jsonify({
+                "success": False,
+                "error": f"Agent initialization or execution failed: {str(e)}"
+            }), 500
         
         if result.success:
             return jsonify({
