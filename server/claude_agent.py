@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import anthropic
+from anthropic import RateLimitError
 from github import Github
 from github.Repository import Repository
 from git import Repo
@@ -27,6 +28,13 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Budget constants to prevent token overuse and wandering behavior
+MAX_ITERATIONS = 10
+MAX_TOOL_CALLS = 10          # hard stop
+MAX_READS = 3               # read_file/peek_file counts toward this
+MAX_SEARCHES = 2            # search_files
+RESPONSE_MAX_TOKENS = 2500   # keep outputs short
 
 
 @dataclass
@@ -149,6 +157,51 @@ class ClaudeCodeAgent:
                     },
                     "required": ["pattern"]
                 }
+            },
+            {
+                "name": "peek_file",
+                "description": "Read first/last N lines of a file plus a symbol outline to reduce tokens",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Relative path to the file from repository root"
+                        },
+                        "head": {
+                            "type": "integer",
+                            "description": "Lines from top",
+                            "default": 80
+                        },
+                        "tail": {
+                            "type": "integer", 
+                            "description": "Lines from bottom",
+                            "default": 60
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            },
+            {
+                "name": "read_files",
+                "description": "Read multiple small files at once; each is truncated to 2KB",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "maxItems": 5,
+                            "description": "List of file paths to read"
+                        },
+                        "truncate_bytes": {
+                            "type": "integer",
+                            "default": 2048,
+                            "description": "Maximum bytes per file"
+                        }
+                    },
+                    "required": ["files"]
+                }
             }
         ]
 
@@ -227,11 +280,127 @@ class ClaudeCodeAgent:
                 
                 return {"matches": matches[:20]}  # Limit to 20 files
             
+            elif tool_name == "peek_file":
+                file_path = os.path.join(self.current_repo_path, tool_input["file_path"])
+                if not os.path.exists(file_path):
+                    return {"error": f"File not found: {tool_input['file_path']}"}
+                
+                head = int(tool_input.get("head", 80))
+                tail = int(tool_input.get("tail", 60))
+                
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        lines = f.readlines()
+                    
+                    head_block = "".join(lines[:head])
+                    tail_block = "".join(lines[-tail:]) if tail > 0 and len(lines) > head else ""
+                    
+                    # Quick-and-dirty outline - find function/class definitions
+                    outline = []
+                    for i, line in enumerate(lines):
+                        stripped = line.strip()
+                        if re.match(r'^\s*(export\s+)?(class|function|const|let|var|def|interface|type)\b', stripped):
+                            outline.append(f"L{i+1}: {stripped}")
+                    
+                    return {
+                        "head": head_block,
+                        "tail": tail_block,
+                        "outline": outline[:120],  # Limit outline entries
+                        "total_lines": len(lines)
+                    }
+                except Exception as e:
+                    return {"error": f"Could not read file: {str(e)}"}
+            
+            elif tool_name == "read_files":
+                files = tool_input["files"]
+                truncate_bytes = int(tool_input.get("truncate_bytes", 2048))
+                results = {}
+                
+                for file_path in files:
+                    full_path = os.path.join(self.current_repo_path, file_path)
+                    if not os.path.exists(full_path):
+                        results[file_path] = {"error": f"File not found: {file_path}"}
+                        continue
+                    
+                    try:
+                        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read(truncate_bytes)
+                            if f.read(1):  # Check if there's more content
+                                content += "\n... (truncated)"
+                        
+                        # Add a quick outline for each file
+                        lines = content.split('\n')
+                        outline = []
+                        for i, line in enumerate(lines):
+                            stripped = line.strip()
+                            if re.match(r'^\s*(export\s+)?(class|function|const|let|var|def|interface|type)\b', stripped):
+                                outline.append(f"L{i+1}: {stripped}")
+                        
+                        results[file_path] = {
+                            "content": content,
+                            "outline": outline[:20],  # Limit outline
+                            "truncated": len(content) >= truncate_bytes
+                        }
+                    except Exception as e:
+                        results[file_path] = {"error": f"Could not read file: {str(e)}"}
+                
+                return {"files": results}
+            
             else:
                 return {"error": f"Unknown tool: {tool_name}"}
                 
         except Exception as e:
             return {"error": f"Tool execution failed: {str(e)}"}
+
+    def extract_keywords(self, ticket: str) -> List[str]:
+        """
+        Extract relevant keywords from ticket description for targeted searches
+        
+        Args:
+            ticket: The ticket description to analyze
+            
+        Returns:
+            List of relevant keywords for searching
+        """
+        # Extract alphanum words ≥ 3 chars, drop very common words
+        words = re.findall(r'[A-Za-z0-9_-]{3,}', ticket)
+        stop = {"the", "and", "with", "from", "into", "that", "this", "ticket", 
+                "add", "update", "create", "implement", "fix", "bug", "feature"}
+        uniq = []
+        for w in words:
+            lw = w.lower()
+            if lw not in stop and lw not in uniq:
+                uniq.append(lw)
+        return uniq[:6]  # keep it tight
+
+    def _prune_messages(self, messages: List[dict], max_user_msgs: int = 6, max_assistant_msgs: int = 6) -> List[dict]:
+        """
+        Prune message history to keep context short and avoid token explosion
+        
+        Args:
+            messages: List of message dictionaries
+            max_user_msgs: Maximum number of user messages to keep
+            max_assistant_msgs: Maximum number of assistant messages to keep
+            
+        Returns:
+            Pruned list of messages
+        """
+        pruned = []
+        user_count = assistant_count = 0
+        
+        # Keep system/first prompt + the most recent few
+        for m in reversed(messages):
+            role = m["role"]
+            if role == "user" and user_count < max_user_msgs:
+                pruned.append(m)
+                user_count += 1
+            elif role == "assistant" and assistant_count < max_assistant_msgs:
+                pruned.append(m)
+                assistant_count += 1
+            elif role not in ("user", "assistant"):
+                pruned.append(m)
+        
+        return list(reversed(pruned))
 
     def extract_ticket_number(self, ticket_description: str) -> Optional[str]:
         """
@@ -335,59 +504,90 @@ class ClaudeCodeAgent:
         # Extract ticket number from description
         ticket_number = self.extract_ticket_number(ticket_description)
         
-        # Initial prompt for Claude with tool access
-        initial_prompt = f"""You are a software developer implementing this ticket. You have access to file operation tools to read, write, and explore the codebase.
+        # Extract keywords for targeted searches
+        keywords = self.extract_keywords(ticket_description)
+        
+        # Initial prompt for Claude with strict budget and targeted workflow
+        initial_prompt = f"""You are a senior engineer with a strict tool and token budget.
 
-TICKET: {ticket_description}
+OBJECTIVE
+Implement the ticket with minimal exploration: produce concrete code edits and create a PR.
 
-REPOSITORY CONTEXT:
-{repository_context[:1500] if repository_context else "No repository context provided"}
+BUDGET RULES (hard):
+- Max {MAX_TOOL_CALLS} tool calls total.
+- Max {MAX_READS} reads (prefer peek_file over read_file).
+- Max {MAX_SEARCHES} searches.
+- After you have enough context for the first change, STOP EXPLORING and WRITE THE CHANGE.
 
-YOUR TASK:
-1. First, analyze the ticket to understand what needs to be implemented
-2. Use the available tools to explore the codebase and understand the existing structure
-3. Implement the required changes by reading existing files, understanding patterns, and writing new/modified files
-4. Make sure your implementation follows existing code patterns and conventions
+WORKFLOW
+1) Make a 3-step PLAN: (a) likely files, (b) exact searches, (c) specific edit(s) you'll attempt first.
+2) Do at most {MAX_SEARCHES} targeted search_files using 1-3 precise keywords each.
+3) For the TOP-1 candidate file per change, use peek_file. Only use read_file if the specific lines are needed to write.
+4) Write changes EARLY via write_file. Prefer localized changes; follow project patterns you see.
+5) If a file doesn't exist yet, create it in an appropriate directory.
+
+OUTPUT DISCIPLINE
+- Keep responses short.
+- Avoid repeating long excerpts; rely on outlines and peeks.
+- If tool budgets are low/exhausted: proceed to write.
+
+TICKET
+{ticket_description}
+
+SUGGESTED KEYWORDS (use these for targeted searches):
+{', '.join(keywords) if keywords else 'No keywords extracted'}
+
+REPO CONTEXT (paths only):
+{repository_context[:12000] if repository_context else "N/A"}
 
 AVAILABLE TOOLS:
-- read_file: Read contents of any file in the repository
-- write_file: Create or modify files in the repository
+- peek_file: Read first/last N lines + symbol outline (PREFERRED for exploration)
+- read_files: Read multiple small files at once, truncated to 2KB each (efficient batching)
+- read_file: Read complete file contents (use sparingly)
+- write_file: Create or modify files
 - list_directory: List files and directories
-- search_files: Search for text patterns across files
+- search_files: Search for text patterns (use keywords above)
 
-IMPLEMENTATION GUIDELINES:
-- Start by exploring the repository structure to understand the codebase
-- Read relevant existing files to understand patterns and conventions
-- Write production-ready, complete code implementations
-- Include proper error handling, type annotations, and documentation
-- Follow existing code patterns and conventions from the repository
-- Create new files if needed with appropriate file extensions and paths
-- Ensure all imports and dependencies are included
-- Make meaningful code changes that actually implement the ticket requirements
-
-Begin by exploring the repository structure and understanding the codebase, then implement the required changes."""
+Begin by posting your PLAN, then act."""
 
         try:
             # Track changes made during the conversation
             files_modified = []
             
+            # Budget tracking
+            tool_calls_used = 0
+            reads_used = 0
+            searches_used = 0
+            
             # Start the conversation with Claude
             messages = [{"role": "user", "content": [{"type": "text", "text": initial_prompt}]}]
             
-            # Allow Claude to use tools iteratively
-            max_iterations = 500
+            # Allow Claude to use tools iteratively with budget constraints
             iteration = 0
             
-            while iteration < max_iterations:
+            while iteration < MAX_ITERATIONS:
                 iteration += 1
                 print(f"Claude iteration {iteration}")
                 
-                response = self.claude.messages.create(
-                    model="claude-sonnet-4-0",
-                    max_tokens=20000,
-                    messages=messages,
-                    tools=self._get_file_tools()
-                )
+                # Prune messages to avoid token explosion
+                messages = self._prune_messages(messages)
+                
+                try:
+                    response = self.claude.messages.create(
+                        model="claude-sonnet-4-0",
+                        max_tokens=RESPONSE_MAX_TOKENS,
+                        messages=messages,
+                        tools=self._get_file_tools()
+                    )
+                except RateLimitError:
+                    print("Rate limit encountered. Forcing write mode with reduced tokens.")
+                    messages.append({"role": "user", "content": [{"type": "text", "text": "Rate limit encountered. Do not read more. Implement changes now."}]})
+                    response = self.claude.messages.create(
+                        model="claude-sonnet-4-0",
+                        max_tokens=int(RESPONSE_MAX_TOKENS * 0.6),
+                        messages=messages,
+                        tools=self._get_file_tools()
+                    )
                 # Add Claude's response to messages
                 messages.append({"role": "assistant", "content": response.content})
                 
@@ -402,10 +602,37 @@ Begin by exploring the repository structure and understanding the codebase, then
                     print("Claude finished implementation")
                     break
                 
-                # Execute tool calls
+                # Execute tool calls with budget enforcement
                 tool_results = []
                 for tool_call in tool_calls:
                     print(f"Executing tool: {tool_call.name} with input: {tool_call.input}")
+                    
+                    # Check budget constraints
+                    if tool_call.name in ("read_file", "peek_file", "read_files"):
+                        if reads_used >= MAX_READS:
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_call.id,
+                                "content": json.dumps({"error": "read budget exhausted"})
+                            })
+                            continue
+                        reads_used += 1
+                    
+                    if tool_call.name == "search_files":
+                        if searches_used >= MAX_SEARCHES:
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_call.id,
+                                "content": json.dumps({"error": "search budget exhausted"})
+                            })
+                            continue
+                        searches_used += 1
+                    
+                    tool_calls_used += 1
+                    if tool_calls_used >= MAX_TOOL_CALLS:
+                        # Add a user message telling Claude the budget is out and to proceed to writing
+                        messages.append({"role": "user", "content": [{"type": "text", "text": "Tool budget exhausted. Proceed to implement changes now."}]})
+                        break
                     
                     result = self._execute_tool(tool_call.name, tool_call.input)
                     
@@ -653,11 +880,16 @@ Respond with JSON only, no markdown, no explanations."""
             print(f"Repository structure has {len(repo_structure.split())} files")
             print(f"Existing files to modify: {analysis.files_to_modify}")
             
-            response = self.claude.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=8000,  # Increased token limit
-                messages=[{"role": "user", "content": prompt}]
-            )
+            try:
+                response = self.claude.messages.create(
+                    model="claude-3-5-sonnet-20240620",
+                    max_tokens=RESPONSE_MAX_TOKENS,  # Use budget-constrained tokens
+                    messages=[{"role": "user", "content": prompt}]
+                )
+            except RateLimitError:
+                print("Rate limit in generate_code_changes. Using fallback approach.")
+                # Return empty changes to trigger fallback
+                return changes
             
             response_text = response.content[0].text
             print(f"Claude response length: {len(response_text)} characters")
