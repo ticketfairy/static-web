@@ -9,6 +9,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=CS+Gordon:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Bitcount+Grid+Double:wght@100..900&display=swap" rel="stylesheet">
+    <script>
+      try {
+        var colorModeKey = 'chakra-ui-color-mode';
+        var colorMode = localStorage.getItem(colorModeKey);
+        if (!colorMode) {
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          colorMode = mql.matches ? 'dark' : 'light';
+        }
+        if (colorMode === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
