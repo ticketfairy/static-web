@@ -1,5 +1,6 @@
 import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button } from "@chakra-ui/react";
 import SparkleTrail from "./SparkleTrail";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 interface LandingPageProps {
   onNavigateToVideo: () => void;
@@ -12,6 +13,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
   return (
     <Box bg={bgColor} minH="100vh">
       <SparkleTrail />
+      <DarkModeToggle />
       {/* Header */}
       <Flex as="header" align="center" justify="space-between" wrap="wrap" padding="1.5rem" maxW="1200px" mx="auto" position="sticky" top="0" bg={bgColor} zIndex="1000">
         <Flex align="center" mr={5}>

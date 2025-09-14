@@ -29,6 +29,7 @@ import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, Fi
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import SparkleTrail from "./SparkleTrail";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 // API function to call Flask analyze_video endpoint
 const analyzeVideo = async (videoUrl: string, userNotes: string) => {
@@ -987,6 +988,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
     return (
         <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
             <SparkleTrail />
+            <DarkModeToggle />
             {/* Back Button */}
             {onNavigateToLanding && (
                 <Box p={4}>
