@@ -76,6 +76,7 @@ export const VideoPlayerModal = ({
   const [isCreatingJiraTicket, setIsCreatingJiraTicket] = useState(false);
   const [isCreatingLinearIssue, setIsCreatingLinearIssue] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [editableDescription, setEditableDescription] = useState("");
 
   const bgColor = useColorModeValue("white", "gray.800");
 
@@ -89,6 +90,13 @@ export const VideoPlayerModal = ({
       setVideoSrc(videoUrl);
     }
   }, [videoBlob, videoUrl]);
+
+  // Initialize editable description when ticket data changes
+  useEffect(() => {
+    if (ticketData?.ticket?.description) {
+      setEditableDescription(ticketData.ticket.description);
+    }
+  }, [ticketData?.ticket?.description]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -222,7 +230,7 @@ export const VideoPlayerModal = ({
         },
         body: JSON.stringify({
           title: ticketData.ticket.title,
-          description: ticketData.ticket.description,
+          description: editableDescription || ticketData.ticket.description,
         }),
       });
 
@@ -285,7 +293,7 @@ export const VideoPlayerModal = ({
         },
         body: JSON.stringify({
           title: ticketData.ticket.title,
-          description: ticketData.ticket.description,
+          description: editableDescription || ticketData.ticket.description,
         }),
       });
 
@@ -500,12 +508,16 @@ export const VideoPlayerModal = ({
                       <FormControl>
                         <FormLabel fontSize="sm" fontWeight="semibold">Description</FormLabel>
                         <Textarea
-                          value={ticketData.ticket.description}
-                          readOnly
-                          bg="gray.50"
+                          value={editableDescription}
+                          onChange={(e) => setEditableDescription(e.target.value)}
+                          bg="white"
                           fontSize="sm"
                           minH="200px"
                           resize="vertical"
+                          placeholder="Edit the ticket description..."
+                          borderColor="gray.300"
+                          _hover={{ borderColor: "gray.400" }}
+                          _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)" }}
                         />
                       </FormControl>
 
@@ -689,7 +701,7 @@ export const VideoPlayerModal = ({
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
         ticketTitle={ticketData?.ticket?.title || ""}
-        ticketDescription={ticketData?.ticket?.description || ""}
+        ticketDescription={editableDescription || ticketData?.ticket?.description || ""}
       />
     </Modal>
   );
