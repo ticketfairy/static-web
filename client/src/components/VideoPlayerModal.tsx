@@ -25,7 +25,8 @@ import {
   Code,
   useToast,
 } from "@chakra-ui/react";
-import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
+import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize2, FiGithub } from "react-icons/fi";
+import { SiJira, SiLinear } from "react-icons/si";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { GitHubIssueModal } from "./GitHubIssueModal";
 
@@ -341,6 +342,7 @@ export const VideoPlayerModal = ({
                     isLoading={isCreatingJiraTicket}
                     loadingText="Creating..."
                     size="sm"
+                    leftIcon={<SiJira />}
                   >
                     Create in Jira
                   </Button>
@@ -350,6 +352,7 @@ export const VideoPlayerModal = ({
                     isLoading={isCreatingLinearIssue}
                     loadingText="Creating..."
                     size="sm"
+                    leftIcon={<SiLinear />}
                   >
                     Create in Linear
                   </Button>
@@ -357,8 +360,9 @@ export const VideoPlayerModal = ({
                     colorScheme="green"
                     onClick={() => setIsGitHubModalOpen(true)}
                     size="sm"
+                    leftIcon={<FiGithub />}
                   >
-                    Open a Github PR
+                    Open in Github
                   </Button>
                 </>
               )}
