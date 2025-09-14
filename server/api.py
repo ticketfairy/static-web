@@ -136,8 +136,6 @@ def create_jira_ticket_endpoint():
         if not data or "title" not in data or "description" not in data:
             return jsonify({"error": "title and description are required"}), 400
 
-        print("DATA IS:", data)
-        
         title = data["title"]
         description = data["description"]
 
@@ -145,18 +143,9 @@ def create_jira_ticket_endpoint():
         result = create_jira_ticket(title, description)
 
         if result["self"]:
-            # return jsonify({
-            #     "success": True,
-            #     "ticket_key": result["ticket_key"],
-            #     "ticket_url": result["ticket_url"]
-            # })
             return jsonify(result), 200
         else:
-            # return jsonify({
-            #     "success": False,
-            #     "error": result["error"]
-            # }), 400
-            return jsonify({"message": "uwu no bueno"}), 400
+            return jsonify({"error": "Failed to create ticket"}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -170,8 +159,6 @@ def create_linear_issue_endpoint():
         if not data or "title" not in data or "description" not in data:
             return jsonify({"error": "title and description are required"}), 400
 
-        print("Linear issue data:", data)
-        
         title = data["title"]
         description = data["description"]
         team_id = data.get("team_id")  # Optional team ID
@@ -195,20 +182,20 @@ def enhance_description_with_notes(original_description, user_notes):
 
         prompt = f"""You are helping to create a developer ticket. You have an original description from video analysis and additional user notes. Your task is to create an enhanced description that incorporates the key ideas from the user notes while maintaining the structure and clarity of the original description.
 
-Original Description:
-{original_description}
+            Original Description:
+            {original_description}
 
-User Notes:
-{user_notes}
+            User Notes:
+            {user_notes}
 
-Please create an enhanced description that:
-1. Keeps the core information from the original description
-2. Incorporates relevant insights and requirements from the user notes
-3. Maintains a professional, developer-friendly tone
-4. Ensures the description is actionable and clear
-5. Removes any redundancy between the original and notes
+            Please create an enhanced description that:
+            1. Keeps the core information from the original description
+            2. Incorporates relevant insights and requirements from the user notes
+            3. Maintains a professional, developer-friendly tone
+            4. Ensures the description is actionable and clear
+            5. Removes any redundancy between the original and notes
 
-Return only the enhanced description, no additional commentary."""
+            Return only the enhanced description, no additional commentary."""
 
         response = co.chat(
             model="command-r-03-2024", messages=[{"role": "user", "content": prompt}]
