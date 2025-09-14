@@ -1008,6 +1008,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
           <VStack spacing={4}>
             <Heading
               fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
+              fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
               fontWeight="extrabold"
               bgGradient="linear(to-r, purple.500, pink.500, purple.600)"
               bgClip="text"
@@ -1073,6 +1074,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                   px="60px"
                   fontSize="2xl"
                   fontWeight="bold"
+                  fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
                   rightIcon={<Icon as={FiVideo} w={8} h={8} />}
                   onClick={onOpen}
                   bgGradient="linear(to-r, purple.500, pink.500)"

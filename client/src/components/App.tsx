@@ -9,7 +9,6 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPageWrapper />} />
         <Route path="/ticketfairy" element={<VideoPageWrapper />} />
-        <Route path="/tickets" element={<MyTicketsPageWrapper />} />
       </Routes>
     </Router>
   );
@@ -28,11 +27,6 @@ function VideoPageWrapper() {
       onNavigateToLanding={() => navigate('/')}
     />
   );
-}
-
-function MyTicketsPageWrapper() {
-  const navigate = useNavigate();
-  return <MyTicketsPage onNavigateToLanding={() => navigate('/')} />;
 }
 
 export default App;

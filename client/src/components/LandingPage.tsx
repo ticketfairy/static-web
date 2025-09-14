@@ -111,10 +111,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                     h="120px"
                     borderRadius="lg"
                     overflow="hidden"
-                    boxShadow="md"
                   >
                     <Image
-                      src="/image2.png"
+                      src="toothache-1.png"
                       alt="The Rock as Ticket Fairy"
                       w="100%"
                       h="100%"
@@ -137,10 +136,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                     h="120px"
                     borderRadius="lg"
                     overflow="hidden"
-                    boxShadow="md"
                   >
                     <Image
-                      src="/image1.png"
+                      src="toothache-2.png"
                       alt="The Rock as Developer Ticket Fairy"
                       w="100%"
                       h="100%"
@@ -163,10 +161,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                     h="120px"
                     borderRadius="lg"
                     overflow="hidden"
-                    boxShadow="md"
                   >
                     <Image
-                      src="/image3.png"
+                      src="toothache-3.png"
                       alt="The Rock as Light Blue Fairy"
                       w="100%"
                       h="100%"
@@ -189,10 +186,9 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                     h="120px"
                     borderRadius="lg"
                     overflow="hidden"
-                    boxShadow="md"
                   >
                     <Image
-                      src="/image2.png"
+                      src="toothache-4.png"
                       alt="The Rock as Ticket Fairy"
                       w="100%"
                       h="100%"
