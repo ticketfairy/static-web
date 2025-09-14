@@ -1128,7 +1128,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       )}
 
       {/* Video Page Content */}
-      <VStack spacing={12} textAlign="center" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">
+      <VStack spacing={12} textAlign="left" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">
         {/* Enhanced Header Section */}
         <VStack spacing={6} maxW="800px">
           <VStack spacing={4}>
@@ -1138,7 +1138,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               fontWeight="extrabold"
               bgGradient="linear(to-r, purple.500, pink.500, purple.600)"
               bgClip="text"
-              textAlign="center"
+              textAlign="left"
               lineHeight="1.1">
               ✨ Ticket Fairy Studio ✨
             </Heading>
@@ -1222,7 +1222,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 <Text fontSize="lg" color="green.700" fontWeight="medium">
                   📹 Recording Setup Active
                 </Text>
-                <Text fontSize="md" color="gray.600" textAlign="center" maxW="400px">
+                <Text fontSize="md" color="gray.600" textAlign="left" maxW="400px">
                   Position your webcam overlay where you'd like it to appear, then click Record to start capturing your screen.
                 </Text>
 
@@ -1284,7 +1284,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               <Heading
                 py={6}
                 fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }}
-                textAlign="center"
+                textAlign="left"
                 fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
                 bgGradient="linear(to-r, purple.600, pink.600)"
                 bgClip="text"
@@ -1305,7 +1305,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                   borderTopColor="purple.500"
                   animation="spin 1s linear infinite"
                 />
-                <Text textAlign="center" color="gray.500" fontSize="sm">
+                <Text textAlign="left" color="gray.500" fontSize="sm">
                   Loading videos from cloud storage...
                 </Text>
               </VStack>
@@ -1331,7 +1331,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                       <Text fontSize="xl" fontWeight="bold" color="gray.600">
                         No videos yet
                       </Text>
-                      <Text fontSize="md" color="gray.500" textAlign="center" lineHeight="1.6">
+                      <Text fontSize="md" color="gray.500" textAlign="left" lineHeight="1.6">
                         Create your first video by recording your screen or uploading an existing file. Our AI will analyze it and generate
                         professional tickets.
                       </Text>
@@ -1581,7 +1581,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               <Text fontSize="2xl" fontWeight="bold" color="purple.600">
                 ✨ Create Your Video ✨
               </Text>
-              <Text fontSize="md" color="gray.600" textAlign="center" fontWeight="normal">
+              <Text fontSize="md" color="gray.600" textAlign="left" fontWeight="normal">
                 Choose how you'd like to create your video for ticket generation
               </Text>
             </VStack>
@@ -1609,7 +1609,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                   <Box p={4} bg="purple.500" borderRadius="full" color="white">
                     <Icon as={FiUpload} w={8} h={8} />
                   </Box>
-                  <VStack spacing={2} textAlign="center">
+                  <VStack spacing={2} textAlign="left">
                     <Text fontSize="xl" fontWeight="bold" color="purple.700">
                       Upload Video
                     </Text>
@@ -1649,7 +1649,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                   <Box p={4} bg="green.500" borderRadius="full" color="white">
                     <Icon as={FiCamera} w={8} h={8} />
                   </Box>
-                  <VStack spacing={2} textAlign="center">
+                  <VStack spacing={2} textAlign="left">
                     <Text fontSize="xl" fontWeight="bold" color="green.700">
                       Record New Video
                     </Text>

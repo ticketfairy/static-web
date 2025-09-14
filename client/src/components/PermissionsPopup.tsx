@@ -105,7 +105,7 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
         </Box>
 
         {/* Recording Limit */}
-        <Text fontSize="xs" color="gray.500" textAlign="center" px={4} pb={3}>
+        <Text fontSize="xs" color="gray.500" textAlign="left" px={4} pb={3}>
           2 min recording limit
         </Text>
 

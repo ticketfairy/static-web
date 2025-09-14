@@ -40,7 +40,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
       {/* Demo Video Section */}
       <Box w="full" py={16}>
-        <VStack spacing={8} textAlign="center" px={4} maxW="1200px" mx="auto">
+        <VStack spacing={8} textAlign="left" px={4} maxW="1200px" mx="auto">
             <Box
               w="100%"
               maxW="400px"
@@ -67,7 +67,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
       {/* Hero Section */}
       <Box w="100vw">
-        <VStack spacing={4} textAlign="center" py={12} px={4} maxW="1200px" mx="auto">
+        <VStack spacing={4} textAlign="left" py={12} px={4} maxW="1200px" mx="auto">
           <Heading 
             fontWeight={600} 
             fontSize={{ base: "3xl", sm: "4xl", md: "6xl" }} 
@@ -98,7 +98,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
 
         {/* Problem Section */}
         <Box w="full" py={16}>
-          <VStack spacing={24} textAlign="center" px={4} maxW="1200px" mx="auto">
+          <VStack spacing={24} textAlign="left" px={4} maxW="1200px" mx="auto">
             <Heading fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} color="purple.400" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
               🦷 Tickets are Toothaches 🦷
             </Heading>
@@ -123,7 +123,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                   <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
                     Hidden Cavities 🦷 🔍 
                   </Text>
-                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
+                  <Text color={textColor} textAlign="left" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Team members work in isolation, creating hidden problems that go undetected until they become painful
                   </Text>
                 </VStack>
@@ -148,7 +148,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                   <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
                     Endless Root Canal 🦷 ⏰
                   </Text>
-                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
+                  <Text color={textColor} textAlign="left" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Writing detailed tickets feels like a never-ending procedure that drains time and energy
                   </Text>
                 </VStack>
@@ -173,7 +173,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                   <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
                     Toothache Without a Cause 🦷 😵 
                   </Text>
-                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
+                  <Text color={textColor} textAlign="left" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     Unclear tickets cause confusion and pain, making it impossible to know what's actually needed
                   </Text>
                 </VStack>
@@ -198,7 +198,7 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
                   <Text fontWeight="bold" fontSize="lg" fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif">
                     Wisdom Teeth Coming In 🦷 🌱 
                   </Text>
-                  <Text color={textColor} textAlign="center" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
+                  <Text color={textColor} textAlign="left" fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif">
                     New team members experience growing pains as they slowly break through existing workflows
                   </Text>
                 </VStack>
