@@ -76,9 +76,162 @@ class ClaudeCodeAgent:
             self.github = Github(github_token) if github_token else None
             self.claude = anthropic.Anthropic(api_key=anthropic_api_key)
             self.temp_dir = None
+            self.current_repo_path = None  # Track current repository path for tools
         except Exception as e:
             print(f"Error initializing Claude Code Agent: {e}")
             raise
+
+    def _get_file_tools(self):
+        """
+        Define the file operation tools that Claude can use
+        """
+        return [
+            {
+                "name": "read_file",
+                "description": "Read the contents of a file in the repository",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Relative path to the file from repository root"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            },
+            {
+                "name": "write_file",
+                "description": "Write content to a file in the repository (creates or overwrites)",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "Relative path to the file from repository root"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Complete content to write to the file"
+                        }
+                    },
+                    "required": ["file_path", "content"]
+                }
+            },
+            {
+                "name": "list_directory",
+                "description": "List files and directories in a given path",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "directory_path": {
+                            "type": "string",
+                            "description": "Relative path to the directory from repository root (empty string for root)"
+                        }
+                    },
+                    "required": ["directory_path"]
+                }
+            },
+            {
+                "name": "search_files",
+                "description": "Search for text patterns in files within the repository",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "Text pattern to search for"
+                        },
+                        "file_extension": {
+                            "type": "string",
+                            "description": "Optional file extension filter (e.g., '.py', '.js')"
+                        }
+                    },
+                    "required": ["pattern"]
+                }
+            }
+        ]
+
+    def _execute_tool(self, tool_name: str, tool_input: dict) -> dict:
+        """
+        Execute a file operation tool
+        """
+        if not self.current_repo_path:
+            return {"error": "No repository path set. Cannot execute file operations."}
+        
+        try:
+            if tool_name == "read_file":
+                file_path = os.path.join(self.current_repo_path, tool_input["file_path"])
+                if not os.path.exists(file_path):
+                    return {"error": f"File not found: {tool_input['file_path']}"}
+                
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return {"content": content}
+            
+            elif tool_name == "write_file":
+                file_path = os.path.join(self.current_repo_path, tool_input["file_path"])
+                
+                # Create directory if it doesn't exist
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(tool_input["content"])
+                return {"success": f"File written successfully: {tool_input['file_path']}"}
+            
+            elif tool_name == "list_directory":
+                dir_path = os.path.join(self.current_repo_path, tool_input["directory_path"])
+                if not os.path.exists(dir_path):
+                    return {"error": f"Directory not found: {tool_input['directory_path']}"}
+                
+                items = []
+                for item in os.listdir(dir_path):
+                    item_path = os.path.join(dir_path, item)
+                    items.append({
+                        "name": item,
+                        "type": "directory" if os.path.isdir(item_path) else "file"
+                    })
+                return {"items": items}
+            
+            elif tool_name == "search_files":
+                pattern = tool_input["pattern"]
+                file_extension = tool_input.get("file_extension")
+                matches = []
+                
+                for root, dirs, files in os.walk(self.current_repo_path):
+                    # Skip hidden directories and common build/cache directories
+                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__', 'venv', 'dist', 'build']]
+                    
+                    for file in files:
+                        if file.startswith('.'):
+                            continue
+                        
+                        if file_extension and not file.endswith(file_extension):
+                            continue
+                        
+                        file_path = os.path.join(root, file)
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                                if pattern in content:
+                                    rel_path = os.path.relpath(file_path, self.current_repo_path)
+                                    # Find line numbers where pattern occurs
+                                    lines = content.split('\n')
+                                    line_numbers = [i+1 for i, line in enumerate(lines) if pattern in line]
+                                    matches.append({
+                                        "file": rel_path,
+                                        "line_numbers": line_numbers[:5]  # Limit to first 5 matches per file
+                                    })
+                        except (UnicodeDecodeError, PermissionError):
+                            continue
+                
+                return {"matches": matches[:20]}  # Limit to 20 files
+            
+            else:
+                return {"error": f"Unknown tool: {tool_name}"}
+                
+        except Exception as e:
+            return {"error": f"Tool execution failed: {str(e)}"}
 
     def extract_ticket_number(self, ticket_description: str) -> Optional[str]:
         """
@@ -166,143 +319,153 @@ class ClaudeCodeAgent:
         
     def analyze_ticket(self, ticket_description: str, repository_context: str = "", local_repo_path: str = "") -> Tuple[TicketAnalysis, List[CodeChange]]:
         """
-        Analyze a ticket description and implement the required changes using Claude
+        Analyze a ticket description and implement the required changes using Claude with tools
         
         Args:
             ticket_description: The ticket description to implement
             repository_context: Optional context about the repository structure
-            local_repo_path: Path to the local repository for reading existing files
+            local_repo_path: Path to the local repository for file operations
             
         Returns:
             Tuple of (TicketAnalysis object, List of CodeChange objects)
         """
-        # Read existing files that might be relevant
-        existing_files_content = {}
-        if local_repo_path and repository_context:
-            # Extract potential file paths from repository context
-            import re
-            file_paths = re.findall(r'[\w/.-]+\.(py|js|ts|tsx|jsx|java|cpp|c|go|rs|php|html|css|json|yml|yaml|md)', repository_context)
-            
-            # Read up to 10 most relevant files
-            for file_path in file_paths[:10]:
-                full_path = os.path.join(local_repo_path, file_path)
-                if os.path.exists(full_path):
-                    try:
-                        with open(full_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            # Truncate large files to avoid token limits
-                            if len(content) > 2000:
-                                content = content[:2000] + "\n... (truncated)"
-                            existing_files_content[file_path] = content
-                    except Exception as e:
-                        print(f"Could not read {file_path}: {e}")
-
-        # Prepare existing files summary for the prompt
-        files_summary = ""
-        if existing_files_content:
-            files_summary = "\n\nEXISTING FILES CONTENT:\n"
-            for file_path, content in existing_files_content.items():
-                files_summary += f"\n--- {file_path} ---\n{content}\n"
-
-        prompt = f"""You are implementing this development ticket. Provide both analysis and complete implementation.
+        # Set the current repository path for tools
+        self.current_repo_path = local_repo_path
+        
+        # Extract ticket number from description
+        ticket_number = self.extract_ticket_number(ticket_description)
+        
+        # Initial prompt for Claude with tool access
+        initial_prompt = f"""You are a software developer implementing this ticket. You have access to file operation tools to read, write, and explore the codebase.
 
 TICKET: {ticket_description}
 
 REPOSITORY CONTEXT:
-{repository_context[:1500] if repository_context else "No repository context provided"}{files_summary}
+{repository_context[:1500] if repository_context else "No repository context provided"}
 
-TASK: Analyze the ticket and implement the required changes. Provide your response in this JSON format:
+YOUR TASK:
+1. First, analyze the ticket to understand what needs to be implemented
+2. Use the available tools to explore the codebase and understand the existing structure
+3. Implement the required changes by reading existing files, understanding patterns, and writing new/modified files
+4. Make sure your implementation follows existing code patterns and conventions
 
-{{
-    "analysis": {{
-        "title": "Clear, actionable title",
-        "description": "Detailed implementation description", 
-        "requirements": ["Specific, testable requirements"],
-        "files_to_modify": ["Specific file paths that need changes"],
-        "implementation_plan": ["Concrete implementation steps"],
-        "estimated_complexity": "low|medium|high"
-    }},
-    "code_changes": [
-        {{
-            "file_path": "relative/path/to/file.ext",
-            "new_content": "complete file content here",
-            "change_description": "brief description of changes made"
-        }}
-    ]
-}}
+AVAILABLE TOOLS:
+- read_file: Read contents of any file in the repository
+- write_file: Create or modify files in the repository
+- list_directory: List files and directories
+- search_files: Search for text patterns across files
 
 IMPLEMENTATION GUIDELINES:
+- Start by exploring the repository structure to understand the codebase
+- Read relevant existing files to understand patterns and conventions
 - Write production-ready, complete code implementations
 - Include proper error handling, type annotations, and documentation
 - Follow existing code patterns and conventions from the repository
 - Create new files if needed with appropriate file extensions and paths
 - Ensure all imports and dependencies are included
-- Make at least 1-3 meaningful code changes
-- If modifying existing files, preserve existing functionality unless explicitly changing it
-- Use relative paths from repository root for all file_path values
+- Make meaningful code changes that actually implement the ticket requirements
 
-ANALYSIS GUIDELINES:
-- Be specific about file paths (e.g., "src/components/Button.tsx", not just "Button component")
-- Make requirements actionable and testable
-- Consider common patterns: components, services, utils, tests, config files
+Begin by exploring the repository structure and understanding the codebase, then implement the required changes."""
 
-Return only valid JSON, no markdown or explanations."""
-        
-        # Extract ticket number from description
-        ticket_number = self.extract_ticket_number(ticket_description)
-        
         try:
-            response = self.claude.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=8000,  # Increased for code generation
-                messages=[{"role": "user", "content": prompt}]
-            )
+            # Track changes made during the conversation
+            files_modified = []
             
-            response_text = response.content[0].text
+            # Start the conversation with Claude
+            messages = [{"role": "user", "content": initial_prompt}]
             
-            # Try to parse JSON response
-            try:
-                result_json = json.loads(response_text)
-            except json.JSONDecodeError:
-                # Try to extract JSON from markdown code blocks
-                import re
-                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-                if json_match:
-                    result_json = json.loads(json_match.group(1))
-                else:
-                    raise ValueError("Could not parse JSON from response")
+            # Allow Claude to use tools iteratively
+            max_iterations = 10
+            iteration = 0
             
-            # Extract analysis
-            analysis_data = result_json.get("analysis", {})
+            while iteration < max_iterations:
+                iteration += 1
+                print(f"Claude iteration {iteration}")
+                
+                response = self.claude.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=4000,
+                    messages=messages,
+                    tools=self._get_file_tools()
+                )
+                
+                # Add Claude's response to messages
+                messages.append({"role": "assistant", "content": response.content})
+                
+                # Check if Claude wants to use tools
+                tool_calls = []
+                for content_block in response.content:
+                    if content_block.type == "tool_use":
+                        tool_calls.append(content_block)
+                
+                if not tool_calls:
+                    # Claude is done, break the loop
+                    print("Claude finished implementation")
+                    break
+                
+                # Execute tool calls
+                tool_results = []
+                for tool_call in tool_calls:
+                    print(f"Executing tool: {tool_call.name} with input: {tool_call.input}")
+                    
+                    result = self._execute_tool(tool_call.name, tool_call.input)
+                    
+                    # Track file modifications
+                    if tool_call.name == "write_file" and "success" in result:
+                        files_modified.append({
+                            "file_path": tool_call.input["file_path"],
+                            "change_description": f"Modified via {tool_call.name}"
+                        })
+                    
+                    tool_results.append({
+                        "tool_use_id": tool_call.id,
+                        "content": json.dumps(result)
+                    })
+                
+                # Add tool results to messages
+                if tool_results:
+                    messages.append({"role": "user", "content": tool_results})
+            
+            # Create analysis from the ticket
             analysis = TicketAnalysis(
-                title=analysis_data.get("title", self.create_title_from_description(ticket_description)),
-                description=analysis_data.get("description", ticket_description),
-                requirements=analysis_data.get("requirements", [ticket_description]),
-                files_to_modify=analysis_data.get("files_to_modify", []),
-                implementation_plan=analysis_data.get("implementation_plan", ["Implement changes"]),
-                estimated_complexity=analysis_data.get("estimated_complexity", "medium"),
+                title=self.create_title_from_description(ticket_description),
+                description=ticket_description,
+                requirements=[ticket_description],
+                files_to_modify=[f["file_path"] for f in files_modified],
+                implementation_plan=["Explore codebase", "Understand requirements", "Implement changes", "Test implementation"],
+                estimated_complexity="medium",
                 ticket_number=ticket_number
             )
             
-            # Extract code changes
+            # Create code changes from files modified
             code_changes = []
-            changes_data = result_json.get("code_changes", [])
-            for change_data in changes_data:
-                if all(key in change_data for key in ["file_path", "new_content", "change_description"]):
-                    file_path = change_data["file_path"]
-                    original_content = existing_files_content.get(file_path, "")
-                    
-                    code_changes.append(CodeChange(
-                        file_path=file_path,
-                        original_content=original_content,
-                        new_content=change_data["new_content"],
-                        change_description=change_data["change_description"]
-                    ))
+            for file_info in files_modified:
+                file_path = file_info["file_path"]
+                full_path = os.path.join(local_repo_path, file_path)
+                
+                # Read the new content
+                new_content = ""
+                if os.path.exists(full_path):
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            new_content = f.read()
+                    except Exception as e:
+                        print(f"Could not read modified file {file_path}: {e}")
+                
+                code_changes.append(CodeChange(
+                    file_path=file_path,
+                    original_content="",  # We don't track original content in tool mode
+                    new_content=new_content,
+                    change_description=file_info["change_description"]
+                ))
             
             return analysis, code_changes
             
         except Exception as e:
-            print(f"Error in analyze_ticket: {e}")
+            print(f"Error in analyze_ticket with tools: {e}")
+            import traceback
+            traceback.print_exc()
+            
             # Fallback analysis if Claude fails
             fallback_title = self.create_title_from_description(ticket_description)
             fallback_analysis = TicketAnalysis(
@@ -325,7 +488,7 @@ Return only valid JSON, no markdown or explanations."""
 {ticket_description}
 
 ## Status
-This is a placeholder implementation due to an error in code generation.
+This is a placeholder implementation due to an error in tool-based code generation.
 Please review the ticket requirements and implement manually.
 
 ## Error
