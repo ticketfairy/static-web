@@ -395,7 +395,8 @@ def analyze_ticket():
                 "requirements": analysis.requirements,
                 "files_to_modify": analysis.files_to_modify,
                 "implementation_plan": analysis.implementation_plan,
-                "estimated_complexity": analysis.estimated_complexity
+                "estimated_complexity": analysis.estimated_complexity,
+                "ticket_number": analysis.ticket_number
             }
         })
         

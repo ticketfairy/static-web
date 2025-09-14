@@ -12,6 +12,9 @@ import os
 import json
 import tempfile
 import shutil
+import re
+import hashlib
+import time
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +38,7 @@ class TicketAnalysis:
     files_to_modify: List[str]
     implementation_plan: List[str]
     estimated_complexity: str  # "low", "medium", "high"
+    ticket_number: Optional[str] = None  # JIRA ticket number (e.g., "PROJ-123")
 
 
 @dataclass
@@ -75,6 +79,90 @@ class ClaudeCodeAgent:
         except Exception as e:
             print(f"Error initializing Claude Code Agent: {e}")
             raise
+
+    def extract_ticket_number(self, ticket_description: str) -> Optional[str]:
+        """
+        Extract JIRA ticket number from ticket description
+        
+        Args:
+            ticket_description: The ticket description to analyze
+            
+        Returns:
+            Ticket number if found (e.g., "PROJ-123"), None otherwise
+        """
+        # Common JIRA ticket patterns:
+        # - PROJ-123
+        # - ABC-456
+        # - TICKET-789
+        # Look for pattern: uppercase letters, dash, numbers
+        patterns = [
+            r'\b([A-Z]{2,10}-\d+)\b',  # Standard JIRA format (e.g., PROJ-123)
+            r'\b([A-Z]+\d+)\b',        # Alternative format (e.g., PROJ123)
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, ticket_description)
+            if match:
+                return match.group(1)
+        
+        return None
+
+    def create_title_from_description(self, description: str) -> str:
+        """
+        Create a meaningful title from ticket description
+        
+        Args:
+            description: The ticket description
+            
+        Returns:
+            A clean, meaningful title for the ticket
+        """
+        # Remove JIRA ticket numbers from the beginning
+        clean_desc = re.sub(r'^[A-Z]+-\d+:?\s*', '', description.strip())
+        
+        # Take first line or first sentence
+        first_line = clean_desc.split('\n')[0].strip()
+        if not first_line:
+            first_line = clean_desc[:100].strip()
+        
+        # Clean up and truncate
+        title = first_line[:80].strip()
+        if not title:
+            title = "Implement ticket requirements"
+            
+        return title
+
+    def create_unique_branch_name(self, analysis: TicketAnalysis, ticket_description: str) -> str:
+        """
+        Create a unique branch name based on ticket content
+        
+        Args:
+            analysis: TicketAnalysis object
+            ticket_description: Original ticket description
+            
+        Returns:
+            Unique branch name
+        """
+        # Start with ticket number if available
+        if analysis.ticket_number:
+            prefix = analysis.ticket_number.lower()
+        else:
+            # Create a short hash from the description for uniqueness
+            desc_hash = hashlib.md5(ticket_description.encode()).hexdigest()[:8]
+            prefix = f"ticket-{desc_hash}"
+        
+        # Create slug from title
+        title_slug = analysis.title.lower()
+        title_slug = re.sub(r'[^a-z0-9\s-]', '', title_slug)  # Remove special chars
+        title_slug = re.sub(r'\s+', '-', title_slug.strip())   # Replace spaces with dashes
+        title_slug = re.sub(r'-+', '-', title_slug)            # Remove multiple dashes
+        title_slug = title_slug.strip('-')                     # Remove leading/trailing dashes
+        
+        # Truncate if too long
+        if len(title_slug) > 50:
+            title_slug = title_slug[:50].rstrip('-')
+        
+        return f"feature/{prefix}-{title_slug}"
         
     def analyze_ticket(self, ticket_description: str, repository_context: str = "") -> TicketAnalysis:
         """
@@ -114,9 +202,12 @@ GUIDELINES:
 
 Return only valid JSON, no markdown or explanations."""
         
+        # Extract ticket number from description
+        ticket_number = self.extract_ticket_number(ticket_description)
+        
         try:
             response = self.claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-20240620",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -129,18 +220,21 @@ Return only valid JSON, no markdown or explanations."""
                 requirements=analysis_json["requirements"],
                 files_to_modify=analysis_json["files_to_modify"],
                 implementation_plan=analysis_json["implementation_plan"],
-                estimated_complexity=analysis_json["estimated_complexity"]
+                estimated_complexity=analysis_json["estimated_complexity"],
+                ticket_number=ticket_number
             )
             
         except Exception as e:
-            # Fallback analysis if Claude fails
+            # Fallback analysis if Claude fails - create meaningful title from description
+            fallback_title = self.create_title_from_description(ticket_description)
             return TicketAnalysis(
-                title="Implement ticket requirements",
+                title=fallback_title,
                 description=ticket_description,
                 requirements=[ticket_description],
                 files_to_modify=[],
                 implementation_plan=["Analyze requirements", "Implement changes", "Test implementation"],
-                estimated_complexity="medium"
+                estimated_complexity="medium",
+                ticket_number=ticket_number
             )
     
     def clone_repository(self, repo_name: str, branch: str = "main") -> Tuple[Repository, str]:
@@ -294,7 +388,7 @@ Respond with JSON only, no markdown, no explanations."""
             print(f"Existing files to modify: {analysis.files_to_modify}")
             
             response = self.claude.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-20240620",
                 max_tokens=8000,  # Increased token limit
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -419,7 +513,7 @@ This is a placeholder implementation. Please review and modify as needed.
     
     def create_pull_request(self, repo: Repository, analysis: TicketAnalysis, 
                           changes: List[CodeChange], local_repo_path: str,
-                          base_branch: str = "main") -> PRResult:
+                          ticket_description: str, base_branch: str = "main") -> PRResult:
         """
         Create a pull request with the generated changes
         
@@ -428,14 +522,15 @@ This is a placeholder implementation. Please review and modify as needed.
             analysis: TicketAnalysis object
             changes: List of applied changes
             local_repo_path: Path to local repository
+            ticket_description: Original ticket description for unique branch naming
             base_branch: Base branch for the PR
             
         Returns:
             PRResult object with PR creation results
         """
         try:
-            # Create a new branch
-            branch_name = f"feature/{analysis.title.lower().replace(' ', '-')}"
+            # Create a unique branch name based on ticket content
+            branch_name = self.create_unique_branch_name(analysis, ticket_description)
             git_repo = Repo(local_repo_path)
             
             # Create and checkout new branch
@@ -533,7 +628,7 @@ This is a placeholder implementation. Please review and modify as needed.
                 )
             
             # Step 6: Create pull request
-            result = self.create_pull_request(repo, analysis, changes, local_path, base_branch)
+            result = self.create_pull_request(repo, analysis, changes, local_path, ticket_description, base_branch)
             
             return result
             
