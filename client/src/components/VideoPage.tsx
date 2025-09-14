@@ -1662,6 +1662,14 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         onRetake={handleRetakeRecording}
       />
 
+      {/* Ticket Conversion Modal */}
+      <TicketConversionModal
+        isOpen={isTicketModalOpen}
+        onClose={onTicketModalClose}
+        videoBlob={recordedVideo}
+        onSaveTicket={handleSaveTicket}
+      />
+
       {/* Permissions Popup */}
       <PermissionsPopup
         isOpen={state.showPermissionsPopup}
