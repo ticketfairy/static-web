@@ -251,18 +251,25 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       }
     }
 
-    // Add screen audio if available
+    // Always prioritize microphone audio from webcam for user voice
+    const webcamAudioTracks = webcamStream.getAudioTracks();
     const screenAudioTracks = screenStream.getAudioTracks();
-    if (screenAudioTracks.length > 0) {
-      combinedStream.addTrack(screenAudioTracks[0]);
-      console.log("✅ Added screen audio track");
-    } else {
-      // If no screen audio, add webcam audio
-      const webcamAudioTracks = webcamStream.getAudioTracks();
-      if (webcamAudioTracks.length > 0) {
-        combinedStream.addTrack(webcamAudioTracks[0]);
-        console.log("✅ Added webcam audio track");
+
+    if (webcamAudioTracks.length > 0) {
+      combinedStream.addTrack(webcamAudioTracks[0]);
+      console.log("✅ Added webcam microphone audio track (priority for user voice)");
+
+      // If we also have screen audio (system audio), we could add it too
+      // but for now, prioritize microphone audio to avoid conflicts
+      if (screenAudioTracks.length > 0) {
+        console.log("ℹ️ Screen audio available but using microphone audio instead");
       }
+    } else if (screenAudioTracks.length > 0) {
+      // Fallback to screen audio if no microphone
+      combinedStream.addTrack(screenAudioTracks[0]);
+      console.log("✅ Added screen audio track (fallback - no microphone)");
+    } else {
+      console.log("⚠️ No audio tracks available from either source");
     }
 
     console.log("🎯 Simple combined stream created:", {
@@ -378,21 +385,32 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
       // START RECORDING IMMEDIATELY to prevent screen share from being closed by browser
       console.log("Starting recording immediately to maintain screen share...");
 
-      // Prepare the recording stream
-      let recordingStream = streams.screenStream;
+      // Prepare the recording stream with proper audio handling
+      let recordingStream: MediaStream;
       let streamType = "screen-only";
 
-      // SKIP COMBINING FOR NOW - use screen stream directly to avoid inactivity issues
-      console.log("🎯 Using screen stream directly to avoid inactivity issues");
-      recordingStream = streams.screenStream;
-      streamType = "screen-only-safe";
+      // Check if screen stream has audio (system audio)
+      const hasScreenAudio = streams.screenStream.getAudioTracks().length > 0;
+      const hasWebcamAudio = streams.webcamStream.getAudioTracks().length > 0;
 
-      // Log audio availability for debugging
-      if (streams.screenStream.getAudioTracks().length === 0) {
-        console.log("ℹ️ Screen stream has no audio - recording will be video-only");
-        if (streams.webcamStream.getAudioTracks().length > 0) {
-          console.log("ℹ️ Webcam audio is available but not being combined to prevent stream issues");
-        }
+      console.log("🎵 Audio availability:", { hasScreenAudio, hasWebcamAudio });
+
+      if (hasWebcamAudio) {
+        // Create combined stream with microphone audio
+        console.log("🎯 Creating combined stream with microphone audio");
+        recordingStream = createCombinedStream(streams.screenStream, streams.webcamStream);
+        streamType = "combined-with-microphone";
+
+        // Update the streams state with the combined stream
+        setStreams((prev) => ({
+          ...prev,
+          combinedStream: recordingStream,
+        }));
+      } else {
+        // Use screen stream only if no microphone audio
+        console.log("🎯 Using screen stream only (no microphone audio available)");
+        recordingStream = streams.screenStream;
+        streamType = "screen-only";
       }
 
       console.log(`Using ${streamType} stream for recording:`, {
@@ -487,7 +505,7 @@ export const useScreenRecording = (): UseScreenRecordingReturn => {
 
       mediaRecorder.onerror = (event) => {
         console.error("❌ MediaRecorder error:", event);
-        console.error("❌ MediaRecorder state when error occurred:", mediaRecorder.state);
+        console.error("❌ MediaRecorder state when error occurred:", mediaRecorder?.state);
         console.error("❌ Stream status when error occurred:", {
           screenActive: streams.screenStream?.active,
           webcamActive: streams.webcamStream?.active,
