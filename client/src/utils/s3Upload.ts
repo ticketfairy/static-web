@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // Configuration for your S3 bucket
 const BUCKET_NAME = "ticketfairy-production";
@@ -404,6 +404,7 @@ export class S3VideoUploader {
 
     try {
       const key = this.generateTicketKey(videoFilename);
+      console.log("Deleting ticket with key:", key, "for filename:", videoFilename);
 
       const command = new DeleteObjectCommand({
         Bucket: BUCKET_NAME,
@@ -411,6 +412,7 @@ export class S3VideoUploader {
       });
 
       await this.s3Client.send(command);
+      console.log("Successfully deleted ticket from S3:", key);
 
       return {
         success: true,

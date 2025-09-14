@@ -521,6 +521,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       notes: "",
       blob,
       createdAt: timestamp,
+      filename: title || uniqueTitle, // Store the original filename for ticket deletion
       isUploading: false,
       uploadProgress: 0,
     };
@@ -538,7 +539,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
     return newVideo;
   };
-
 
   // Helper function to handle delete video confirmation
   const handleDeleteVideo = (video: VideoItem) => {
@@ -569,7 +569,9 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
         // Also delete the associated ticket data if S3 ticket is configured
         if (isS3TicketConfigured) {
           try {
-            await deleteS3Ticket(videoToDelete.title);
+            // Use the original filename, not the display title
+            const filenameToUse = videoToDelete.filename || videoToDelete.title;
+            await deleteS3Ticket(filenameToUse);
             console.log("Associated ticket data deleted from S3");
           } catch (ticketDeleteError) {
             console.warn("Failed to delete ticket data:", ticketDeleteError);
@@ -1241,7 +1243,8 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           </Text>
                           {/* Timestamp */}
                           <Text color="gray.500" fontSize="xs" textAlign="left" fontWeight="medium">
-                            📅 Created on {new Date(video.createdAt).toLocaleDateString()} at {new Date(video.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            📅 Created on {new Date(video.createdAt).toLocaleDateString()} at{" "}
+                            {new Date(video.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         </VStack>
 
@@ -1635,7 +1638,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
       />
 
       {/* Ticket Result Modal */}
-      <Modal isOpen={isTicketResultModalOpen} onClose={() => { onTicketResultModalClose(); resetEnhancement(); }} size="xl">
+      <Modal
+        isOpen={isTicketResultModalOpen}
+        onClose={() => {
+          onTicketResultModalClose();
+          resetEnhancement();
+        }}
+        size="xl">
         <ModalOverlay />
         <ModalContent maxH="90vh" overflowY="auto">
           <ModalHeader>
@@ -1728,11 +1737,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           Enhance Ticket
                         </Button>
                         {enhancedTicket && (
-                          <Button
-                            variant="outline"
-                            colorScheme="gray"
-                            onClick={resetEnhancement}
-                            size="sm">
+                          <Button variant="outline" colorScheme="gray" onClick={resetEnhancement} size="sm">
                             Reset to Original
                           </Button>
                         )}
@@ -1818,111 +1823,108 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         isClosable: true,
                       });
 
-                                            // Open the Jira ticket in a new tab
-                                            window.open(result.self, "_blank");
-                                        } else {
-                                            toast({
-                                                title: "Failed to Create Jira Ticket",
-                                                description: result.error || "Unknown error occurred",
-                                                status: "error",
-                                                duration: 5000,
-                                                isClosable: true,
-                                            });
-                                        }
-                                    } catch (error) {
-                                        console.error("Jira API error:", error);
-                                        toast({
-                                            title: "Error",
-                                            description: "Failed to connect to Jira API",
-                                            status: "error",
-                                            duration: 5000,
-                                            isClosable: true,
-                                        });
-                                    }
-                                } else {
-                                    toast({
-                                        title: "No Ticket Data",
-                                        description: "Please generate a ticket first",
-                                        status: "warning",
-                                        duration: 3000,
-                                        isClosable: true,
-                                    });
-                                }
-                            }}
-                        >
-                            Open in Jira
-                        </Button>
-                        <Button
-                            colorScheme="gray"
-                            mr={3}
-                            onClick={async () => {
-                                const ticketToUse = enhancedTicket || selectedTicket;
-                                if (ticketToUse && ticketToUse.success && ticketToUse.ticket) {
-                                    try {
-                                        const response = await fetch("http://localhost:4000/create-linear-issue", {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/json",
-                                            },
-                                            body: JSON.stringify({
-                                                title: ticketToUse.ticket.title,
-                                                description: ticketToUse.ticket.description,
-                                            }),
-                                        });
+                      // Open the Jira ticket in a new tab
+                      window.open(result.self, "_blank");
+                    } else {
+                      toast({
+                        title: "Failed to Create Jira Ticket",
+                        description: result.error || "Unknown error occurred",
+                        status: "error",
+                        duration: 5000,
+                        isClosable: true,
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Jira API error:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to connect to Jira API",
+                      status: "error",
+                      duration: 5000,
+                      isClosable: true,
+                    });
+                  }
+                } else {
+                  toast({
+                    title: "No Ticket Data",
+                    description: "Please generate a ticket first",
+                    status: "warning",
+                    duration: 3000,
+                    isClosable: true,
+                  });
+                }
+              }}>
+              Open in Jira
+            </Button>
+            <Button
+              colorScheme="gray"
+              mr={3}
+              onClick={async () => {
+                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                  try {
+                    const response = await fetch("http://localhost:4000/create-linear-issue", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        title: selectedTicket.ticket.title,
+                        description: selectedTicket.ticket.description,
+                      }),
+                    });
 
-                                        const result = await response.json();
+                    const result = await response.json();
 
-                                        if (result.success && result.url) {
-                                            toast({
-                                                title: "Linear Issue Created!",
-                                                description: `Issue ${result.identifier} created successfully`,
-                                                status: "success",
-                                                duration: 5000,
-                                                isClosable: true,
-                                            });
+                    if (result.success && result.url) {
+                      toast({
+                        title: "Linear Issue Created!",
+                        description: `Issue ${result.identifier} created successfully`,
+                        status: "success",
+                        duration: 5000,
+                        isClosable: true,
+                      });
 
-                                            // Open the Linear issue in a new tab
-                                            window.open(result.url, "_blank");
-                                        } else {
-                                            toast({
-                                                title: "Failed to Create Linear Issue",
-                                                description: result.error || "Unknown error occurred",
-                                                status: "error",
-                                                duration: 5000,
-                                                isClosable: true,
-                                            });
-                                        }
-                                    } catch (error) {
-                                        console.error("Linear API error:", error);
-                                        toast({
-                                            title: "Error",
-                                            description: "Failed to connect to Linear API",
-                                            status: "error",
-                                            duration: 5000,
-                                            isClosable: true,
-                                        });
-                                    }
-                                } else {
-                                    toast({
-                                        title: "No Ticket Data",
-                                        description: "Please generate a ticket first",
-                                        status: "warning",
-                                        duration: 3000,
-                                        isClosable: true,
-                                    });
-                                }
-                            }}
-                        >
-                            Open in Linear
-                        </Button>
-                        <Button colorScheme="purple" onClick={onTicketResultModalClose}>
-                            Close
-                        </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
-        </Box>
-    );
+                      // Open the Linear issue in a new tab
+                      window.open(result.url, "_blank");
+                    } else {
+                      toast({
+                        title: "Failed to Create Linear Issue",
+                        description: result.error || "Unknown error occurred",
+                        status: "error",
+                        duration: 5000,
+                        isClosable: true,
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Linear API error:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to connect to Linear API",
+                      status: "error",
+                      duration: 5000,
+                      isClosable: true,
+                    });
+                  }
+                } else {
+                  toast({
+                    title: "No Ticket Data",
+                    description: "Please generate a ticket first",
+                    status: "warning",
+                    duration: 3000,
+                    isClosable: true,
+                  });
+                }
+              }}>
+              Open in Linear
+            </Button>
+            <Button colorScheme="purple" onClick={onTicketResultModalClose}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box>
+  );
 }
 
 export default VideoPage;
