@@ -18,14 +18,16 @@ import {
 } from "@chakra-ui/react";
 import { FiSave, FiPlay, FiPause, FiRefreshCw, FiZap } from "react-icons/fi";
 import { useState, useRef, useEffect } from "react";
+import { TicketNamingModal } from "./TicketNamingModal";
 
 interface VideoPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   videoBlob: Blob | null;
   onSaveToVideos: (blob: Blob) => Promise<void>;
-  onConvertToTicket: (blob: Blob) => void;
+  onConvertToTicket: (blob: Blob, ticketName: string) => void;
   onRetake: () => void;
+  ticketNumber: number;
 }
 
 export function VideoPreviewModal({
@@ -34,13 +36,15 @@ export function VideoPreviewModal({
   videoBlob,
   onSaveToVideos,
   onConvertToTicket,
-  onRetake
+  onRetake,
+  ticketNumber
 }: VideoPreviewModalProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [hasConverted, setHasConverted] = useState(false);
+  const [isNamingModalOpen, setIsNamingModalOpen] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const toast = useToast();
@@ -122,13 +126,20 @@ export function VideoPreviewModal({
 
   const handleConvertToTicket = () => {
     if (!videoBlob) return;
+    setIsNamingModalOpen(true);
+  };
+
+  const handleTicketNamed = (ticketName: string) => {
+    if (!videoBlob) return;
     setHasConverted(true);
-    onConvertToTicket(videoBlob);
+    setIsNamingModalOpen(false);
+    onConvertToTicket(videoBlob, ticketName);
   };
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" closeOnOverlayClick={false}>
       <ModalOverlay />
       <ModalContent maxW="800px">
@@ -271,5 +282,13 @@ export function VideoPreviewModal({
         </ModalBody>
       </ModalContent>
     </Modal>
+
+    <TicketNamingModal
+      isOpen={isNamingModalOpen}
+      onClose={() => setIsNamingModalOpen(false)}
+      onNext={handleTicketNamed}
+      ticketNumber={ticketNumber}
+    />
+  </>
   );
 }

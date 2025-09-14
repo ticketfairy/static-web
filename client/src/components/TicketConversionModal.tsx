@@ -26,6 +26,7 @@ import {
 } from "@chakra-ui/react";
 import { FiCheck, FiCopy, FiSave } from "react-icons/fi";
 import { useState, useEffect } from "react";
+import { useTickets } from "../hooks/useTickets";
 
 interface TicketData {
   title: string;
@@ -42,6 +43,7 @@ interface TicketConversionModalProps {
   onClose: () => void;
   videoBlob: Blob | null;
   onSaveTicket: (ticket: TicketData) => void;
+  ticketName?: string;
 }
 
 type ConversionStep = 'processing' | 'review' | 'completed';
@@ -50,7 +52,8 @@ export function TicketConversionModal({
   isOpen,
   onClose,
   videoBlob,
-  onSaveTicket
+  onSaveTicket,
+  ticketName
 }: TicketConversionModalProps) {
   const [currentStep, setCurrentStep] = useState<ConversionStep>('processing');
   const [progress, setProgress] = useState(0);
@@ -64,6 +67,7 @@ export function TicketConversionModal({
     acceptanceCriteria: [],
     tags: []
   });
+  const { addTicket } = useTickets();
   const toast = useToast();
 
   useEffect(() => {
@@ -92,7 +96,7 @@ export function TicketConversionModal({
 
     // Simulate AI-generated ticket data
     const mockTicket: TicketData = {
-      title: 'Fix user authentication bug in login flow',
+      title: ticketName || 'Fix user authentication bug in login flow',
       description: `Based on the screen recording analysis, there appears to be an issue with the user authentication process.
 
 The video shows:
@@ -126,6 +130,19 @@ This affects user experience and may be preventing legitimate users from accessi
   };
 
   const handleSaveTicket = () => {
+    // Save to ticket storage
+    addTicket({
+      name: ticketName || ticketData.title,
+      title: ticketData.title,
+      description: ticketData.description,
+      priority: ticketData.priority,
+      type: ticketData.type,
+      estimatedTime: ticketData.estimatedTime,
+      acceptanceCriteria: ticketData.acceptanceCriteria,
+      tags: ticketData.tags
+    });
+
+    // Also call the original callback for backward compatibility
     onSaveTicket(ticketData);
     setCurrentStep('completed');
 
