@@ -1392,17 +1392,17 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
 
                                         const result = await response.json();
 
-                                        if (result.success) {
+                                        if (result.self) {
                                             toast({
                                                 title: "Jira Ticket Created!",
-                                                description: `Ticket ${result.ticket_key} created successfully`,
+                                                description: `Ticket ${result.key} created successfully`,
                                                 status: "success",
                                                 duration: 5000,
                                                 isClosable: true,
                                             });
                                             
                                             // Open the Jira ticket in a new tab
-                                            window.open(result.ticket_url, '_blank');
+                                            window.open(result.self, '_blank');
                                         } else {
                                             toast({
                                                 title: "Failed to Create Jira Ticket",

@@ -96,15 +96,14 @@ def analyze_video():
         try:
             ticket_data = json.loads(result_text)
             print(ticket_data)
-            
+
             # Enhance description with user notes using Cohere
             if user_notes and user_notes.strip():
                 enhanced_description = enhance_description_with_notes(
-                    ticket_data.get("description", ""), 
-                    user_notes
+                    ticket_data.get("description", ""), user_notes
                 )
                 ticket_data["description"] = enhanced_description
-            
+
             return jsonify(
                 {
                     "success": True,
@@ -136,24 +135,27 @@ def create_jira_ticket_endpoint():
         if not data or "title" not in data or "description" not in data:
             return jsonify({"error": "title and description are required"}), 400
 
+        print("DATA IS:", data)
+        
         title = data["title"]
         description = data["description"]
-        project_key = data.get("project_key")  # Optional
 
         # Create Jira ticket
-        result = create_jira_ticket(title, description, project_key)
-        
-        if result["success"]:
-            return jsonify({
-                "success": True,
-                "ticket_key": result["ticket_key"],
-                "ticket_url": result["ticket_url"]
-            })
+        result = create_jira_ticket(title, description)
+
+        if result["self"]:
+            # return jsonify({
+            #     "success": True,
+            #     "ticket_key": result["ticket_key"],
+            #     "ticket_url": result["ticket_url"]
+            # })
+            return jsonify(result), 200
         else:
-            return jsonify({
-                "success": False,
-                "error": result["error"]
-            }), 400
+            # return jsonify({
+            #     "success": False,
+            #     "error": result["error"]
+            # }), 400
+            return jsonify({"message": "uwu no bueno"}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -163,7 +165,7 @@ def enhance_description_with_notes(original_description, user_notes):
     """Use Cohere to enhance the ticket description by incorporating user notes."""
     try:
         co = cohere.ClientV2(COHERE_API_KEY)
-        
+
         prompt = f"""You are helping to create a developer ticket. You have an original description from video analysis and additional user notes. Your task is to create an enhanced description that incorporates the key ideas from the user notes while maintaining the structure and clarity of the original description.
 
 Original Description:
@@ -180,18 +182,18 @@ Please create an enhanced description that:
 5. Removes any redundancy between the original and notes
 
 Return only the enhanced description, no additional commentary."""
-        
+
         response = co.chat(
-            model="command-r-03-2024",
-            messages=[{"role": "user", "content": prompt}]
+            model="command-r-03-2024", messages=[{"role": "user", "content": prompt}]
         )
-        
+
         return response.message.content[0].text
-        
+
     except Exception as e:
         print(f"Error enhancing description with Cohere: {e}")
         # Fallback: append user notes to original description
         return f"{original_description}\n\nAdditional Notes:\n{user_notes}"
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=4000)
