@@ -1507,13 +1507,13 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                 size="sm"
                                 flex={1}
                                 onClick={() => {
-                                  // Open video player modal (side-by-side layout)
-                                  setVideoToPlay(video);
-                                  onVideoPlayerOpen();
-
                                   const ticket = videoTickets[video.id];
                                   if (ticket) {
                                     setSelectedTicket(ticket);
+
+                                    // Open video player modal (side-by-side layout)
+                                    setVideoToPlay(video);
+                                    onVideoPlayerOpen();
                                   } else if (video.s3Url && !analyzingVideos.has(video.id)) {
                                     analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
                                   } else {
