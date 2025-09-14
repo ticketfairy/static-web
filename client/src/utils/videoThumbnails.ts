@@ -260,7 +260,7 @@ export const createPlaceholderThumbnail = (_title: string, duration: string, col
 
   // Add video icon
   ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-  ctx.font = "48px Arial";
+  ctx.font = '48px "Comic Sans MS", cursive, Arial';
   ctx.textAlign = "center";
   ctx.fillText("▶", 160, 100);
 
@@ -268,7 +268,7 @@ export const createPlaceholderThumbnail = (_title: string, duration: string, col
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(250, 150, 60, 20);
   ctx.fillStyle = "white";
-  ctx.font = "12px Arial";
+  ctx.font = '12px "Comic Sans MS", cursive, Arial';
   ctx.textAlign = "center";
   ctx.fillText(duration, 280, 163);
 

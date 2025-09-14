@@ -98,7 +98,7 @@ export function FloatingRecordingControls({
           <Text
             fontSize="sm"
             fontWeight="mono"
-            fontFamily="'Courier New', monospace"
+            fontFamily="'Comic Sans MS', cursive, 'Courier New', monospace"
             minWidth="60px"
             textAlign="center"
           >

@@ -78,7 +78,7 @@ export function RecordingIndicator({ isRecording, recordingTime }: RecordingIndi
           <Text
             fontSize="sm"
             fontWeight="mono"
-            fontFamily="'Courier New', monospace"
+            fontFamily="'Comic Sans MS', cursive, 'Courier New', monospace"
             color="red.500"
             minWidth="40px"
           >

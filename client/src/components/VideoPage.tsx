@@ -1011,7 +1011,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     <VStack spacing={4}>
                         <Heading
                             fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
-                            fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+                            fontFamily="'Comic Sans MS', cursive, 'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
                             fontWeight="extrabold"
                             bgGradient="linear(to-r, purple.500, pink.500, purple.600)"
                             bgClip="text"
@@ -1079,7 +1079,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                     px="60px"
                                     fontSize="2xl"
                                     fontWeight="bold"
-                                    fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+                                    fontFamily="'Comic Sans MS', cursive, 'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
                                     rightIcon={<Icon as={FiVideo} w={8} h={8} />}
                                     onClick={onOpen}
                                     bgGradient="linear(to-r, purple.500, pink.500)"
@@ -1165,7 +1165,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                 py={6}
                                 fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }}
                                 textAlign="center"
-                                fontFamily="'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+                                fontFamily="'Comic Sans MS', cursive, 'CS Gordon', 'Arial Black', 'Helvetica Neue', Arial, sans-serif"
                                 bgGradient="linear(to-r, purple.600, pink.600)"
                                 bgClip="text"
                                 fontWeight="bold"
@@ -1768,7 +1768,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                         minH="120px"
                                                         fontSize="sm"
                                                         bg="white"
-                                                        fontFamily="mono"
+                                                        fontFamily="'Comic Sans MS', cursive, mono"
                                                     />
                                                 </VStack>
                                             </VStack>
