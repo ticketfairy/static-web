@@ -23,9 +23,11 @@ import {
   FormControl,
   FormLabel,
   Code,
+  useToast,
 } from "@chakra-ui/react";
 import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { GitHubIssueModal } from "./GitHubIssueModal";
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -60,6 +62,7 @@ export const VideoPlayerModal = ({
   enhancedTicket,
   onResetEnhancement
 }: VideoPlayerModalProps) => {
+  const toast = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -69,6 +72,9 @@ export const VideoPlayerModal = ({
   const [, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [videoSrc, setVideoSrc] = useState<string>("");
+  const [isCreatingJiraTicket, setIsCreatingJiraTicket] = useState(false);
+  const [isCreatingLinearIssue, setIsCreatingLinearIssue] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   const bgColor = useColorModeValue("white", "gray.800");
 
@@ -192,6 +198,132 @@ export const VideoPlayerModal = ({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  // Function to create Jira ticket
+  const createJiraTicket = async () => {
+    if (!ticketData?.success || !ticketData?.ticket) {
+      toast({
+        title: "No Ticket Data",
+        description: "Please generate a ticket first",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsCreatingJiraTicket(true);
+
+    try {
+      const response = await fetch("http://localhost:4000/create-jira-ticket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: ticketData.ticket.title,
+          description: ticketData.ticket.description,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.self) {
+        toast({
+          title: "Jira Ticket Created!",
+          description: `Ticket ${result.key} created successfully`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Open the Jira ticket in a new tab
+        window.open(result.self, "_blank");
+      } else {
+        toast({
+          title: "Failed to Create Jira Ticket",
+          description: result.error || "Unknown error occurred",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error("Jira API error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to Jira API",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsCreatingJiraTicket(false);
+    }
+  };
+
+  // Function to create Linear issue
+  const createLinearIssue = async () => {
+    if (!ticketData?.success || !ticketData?.ticket) {
+      toast({
+        title: "No Ticket Data",
+        description: "Please generate a ticket first",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsCreatingLinearIssue(true);
+
+    try {
+      const response = await fetch("http://localhost:4000/create-linear-issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: ticketData.ticket.title,
+          description: ticketData.ticket.description,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.url) {
+        toast({
+          title: "Linear Issue Created!",
+          description: `Issue ${result.identifier} created successfully`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        
+        // Open the Linear issue in a new tab
+        window.open(result.url, "_blank");
+      } else {
+        toast({
+          title: "Failed to Create Linear Issue",
+          description: result.error || "Unknown error occurred",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error("Linear API error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to Linear API",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsCreatingLinearIssue(false);
+    }
+  };
+
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl" isCentered>
@@ -200,11 +332,37 @@ export const VideoPlayerModal = ({
         <ModalHeader>
           <HStack justify="space-between" w="full">
             <Text>{videoTitle}</Text>
-            {showTicket && ticketData && onOpenTicket && (
-              <Button size="sm" colorScheme="purple" onClick={onOpenTicket}>
-                View Full Ticket
-              </Button>
-            )}
+            <HStack spacing={2} mr={10}>
+              {ticketData?.success && ticketData?.ticket && (
+                <>
+                  <Button
+                    colorScheme="blue"
+                    onClick={createJiraTicket}
+                    isLoading={isCreatingJiraTicket}
+                    loadingText="Creating..."
+                    size="sm"
+                  >
+                    Create in Jira
+                  </Button>
+                  <Button
+                    colorScheme="gray"
+                    onClick={createLinearIssue}
+                    isLoading={isCreatingLinearIssue}
+                    loadingText="Creating..."
+                    size="sm"
+                  >
+                    Create in Linear
+                  </Button>
+                  <Button
+                    colorScheme="green"
+                    onClick={() => setIsGitHubModalOpen(true)}
+                    size="sm"
+                  >
+                    Open a Github PR
+                  </Button>
+                </>
+              )}
+            </HStack>
           </HStack>
         </ModalHeader>
         <ModalCloseButton />
@@ -521,6 +679,14 @@ export const VideoPlayerModal = ({
           )}
         </ModalBody>
       </ModalContent>
+      
+      {/* GitHub Issue Modal */}
+      <GitHubIssueModal
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
+        ticketTitle={ticketData?.ticket?.title || ""}
+        ticketDescription={ticketData?.ticket?.description || ""}
+      />
     </Modal>
   );
 };
