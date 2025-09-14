@@ -728,15 +728,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 const baseFilename = "Screen Recording.mov";
                 const uniqueFilename = generateUniqueFilename(baseFilename);
 
-                const newVideo = await addVideoToCollection(recordingBlob, uniqueFilename);
-
-                toast({
-                    title: "Recording Saved!",
-                    description: `"${newVideo.title}" has been added to your video collection`,
-                    status: "success",
-                    duration: 4000,
-                    isClosable: true,
-                });
+                await addVideoToCollection(recordingBlob, uniqueFilename);
 
                 // Clean up webcam stream and reset to initial state
                 cleanup();
