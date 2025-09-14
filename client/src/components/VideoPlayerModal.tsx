@@ -77,6 +77,7 @@ export const VideoPlayerModal = ({
   const [isCreatingLinearIssue, setIsCreatingLinearIssue] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [editableDescription, setEditableDescription] = useState("");
+  const [editableTitle, setEditableTitle] = useState("");
 
   const bgColor = useColorModeValue("white", "gray.800");
 
@@ -91,12 +92,15 @@ export const VideoPlayerModal = ({
     }
   }, [videoBlob, videoUrl]);
 
-  // Initialize editable description when ticket data changes
+  // Initialize editable description and title when ticket data changes
   useEffect(() => {
     if (ticketData?.ticket?.description) {
       setEditableDescription(ticketData.ticket.description);
     }
-  }, [ticketData?.ticket?.description]);
+    if (ticketData?.ticket?.title) {
+      setEditableTitle(ticketData.ticket.title);
+    }
+  }, [ticketData?.ticket?.description, ticketData?.ticket?.title]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -229,7 +233,7 @@ export const VideoPlayerModal = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: ticketData.ticket.title,
+          title: editableTitle || ticketData.ticket.title,
           description: editableDescription || ticketData.ticket.description,
         }),
       });
@@ -292,7 +296,7 @@ export const VideoPlayerModal = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: ticketData.ticket.title,
+          title: editableTitle || ticketData.ticket.title,
           description: editableDescription || ticketData.ticket.description,
         }),
       });
@@ -340,7 +344,7 @@ export const VideoPlayerModal = ({
       <ModalContent bg={bgColor} maxW="95vw" maxH="95vh">
         <ModalHeader>
           <HStack justify="space-between" w="full">
-            <Text>{videoTitle}</Text>
+            <Text>{editableTitle || ticketData?.ticket?.title || videoTitle}</Text>
             <HStack spacing={2} mr={10}>
               {ticketData?.success && ticketData?.ticket && (
                 <>
@@ -497,10 +501,14 @@ export const VideoPlayerModal = ({
                       <FormControl>
                         <FormLabel fontSize="sm" fontWeight="semibold">Title</FormLabel>
                         <Input
-                          value={ticketData.ticket.title}
-                          readOnly
-                          bg="gray.50"
+                          value={editableTitle}
+                          onChange={(e) => setEditableTitle(e.target.value)}
+                          bg="white"
                           fontSize="sm"
+                          placeholder="Edit the ticket title..."
+                          borderColor="gray.300"
+                          _hover={{ borderColor: "gray.400" }}
+                          _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px var(--chakra-colors-purple-500)" }}
                         />
                       </FormControl>
 
@@ -700,7 +708,7 @@ export const VideoPlayerModal = ({
       <GitHubIssueModal
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
-        ticketTitle={ticketData?.ticket?.title || ""}
+        ticketTitle={editableTitle || ticketData?.ticket?.title || ""}
         ticketDescription={editableDescription || ticketData?.ticket?.description || ""}
       />
     </Modal>
