@@ -3,10 +3,10 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 # Load credentials
-JIRA_EMAIL="victoryqwei@gmail.com"
-JIRA_TOKEN="ATATT3xFfGF0TNoCovy37QtBddON3P23XMH0O57ToNydWXrqHCSMvbWG8Fa1MUqXJ3wb24lUBZyU6GxezVkyPEdCaYaNSt6euieukCCzD8ZCKHDIl1ojJD5xcCZtZG_r_nCTL7oxpSWue8xJoZV5MiHUK0hOz05RyPKAuIxEWJNXY_Qi4fz6c3Y=0CDEE562"
-JIRA_DOMAIN="ticketfairy.atlassian.net"
-JIRA_PROJECT_KEY="TF"
+JIRA_EMAIL=os.getenv("JIRA_EMAIL")
+JIRA_TOKEN=os.getenv("JIRA_API_TOKEN")
+JIRA_DOMAIN=os.getenv("JIRA_DOMAIN")
+JIRA_PROJECT_KEY=os.getenv("JIRA_PROJECT_KEY")
 
 url = f"https://{JIRA_DOMAIN}/rest/api/3/issue"
 

@@ -1,6 +1,6 @@
-import { Box, VStack, HStack, Text, Button, Switch, Icon, IconButton, useColorModeValue, Divider } from "@chakra-ui/react";
-import { FiX, FiMonitor, FiMic, FiSettings, FiFilter, FiMoreHorizontal } from "react-icons/fi";
+import { Box, Button, Divider, HStack, Icon, IconButton, Switch, Text, useColorModeValue, VStack } from "@chakra-ui/react";
 import { useState } from "react";
+import { FiMic, FiMonitor, FiX } from "react-icons/fi";
 
 interface PermissionsPopupProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ export function PermissionsPopup({ isOpen, onClose, onStartRecording }: Permissi
             <HStack spacing={3}>
               <Icon as={FiMic} />
               <Text fontSize="sm" fontWeight="medium">
-                No microphone
+                Microphone enabled
               </Text>
             </HStack>
             <Switch
