@@ -1166,6 +1166,10 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                           <Text color="gray.600" fontSize="sm" textAlign="left" noOfLines={2} lineHeight="1.4">
                             {video.description}
                           </Text>
+                          {/* Timestamp */}
+                          <Text color="gray.500" fontSize="xs" textAlign="left" fontWeight="medium">
+                            📅 Created on {new Date(video.createdAt).toLocaleDateString()} at {new Date(video.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
                         </VStack>
 
                         {/* Progress Indicators */}
