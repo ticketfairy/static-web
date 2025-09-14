@@ -24,8 +24,10 @@ import {
   AlertIcon,
   Code,
   HStack,
+  Flex,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
+import { ThemeToggle } from "./ThemeToggle";
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import SparkleTrail from "./SparkleTrail";
@@ -1118,14 +1120,17 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
-      {onNavigateToLanding && (
-        <Box p={4}>
+      {/* Header with Back Button and Theme Toggle */}
+      <Flex justify="space-between" align="center" p={4}>
+        {onNavigateToLanding ? (
           <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
             Back to Home
           </Button>
-        </Box>
-      )}
+        ) : (
+          <Box />
+        )}
+        <ThemeToggle size="md" variant="ghost" />
+      </Flex>
 
       {/* Video Page Content */}
       <VStack spacing={12} textAlign="center" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">
