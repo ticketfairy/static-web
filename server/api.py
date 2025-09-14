@@ -377,6 +377,7 @@ def analyze_ticket():
         
         # Get repository context if repo_name is provided
         repository_context = ""
+        local_path = ""
         if repo_name and github_token:
             try:
                 _, local_path = agent.clone_repository(repo_name)
@@ -384,8 +385,8 @@ def analyze_ticket():
             except Exception as e:
                 print(f"Could not get repository context: {e}")
         
-        # Analyze the ticket
-        analysis = agent.analyze_ticket(ticket_description, repository_context)
+        # Analyze the ticket and get implementation
+        analysis, code_changes = agent.analyze_ticket(ticket_description, repository_context, local_path)
         
         return jsonify({
             "success": True,
@@ -397,7 +398,15 @@ def analyze_ticket():
                 "implementation_plan": analysis.implementation_plan,
                 "estimated_complexity": analysis.estimated_complexity,
                 "ticket_number": analysis.ticket_number
-            }
+            },
+            "code_changes": [
+                {
+                    "file_path": change.file_path,
+                    "change_description": change.change_description,
+                    "content_preview": change.new_content[:200] + "..." if len(change.new_content) > 200 else change.new_content
+                }
+                for change in code_changes
+            ]
         })
         
     except Exception as e:
@@ -435,9 +444,9 @@ def test_claude():
         if not anthropic_api_key:
             return jsonify({"error": "Anthropic API key is required"}), 400
         
-        # Test just the ticket analysis part
+        # Test the ticket analysis and implementation
         agent = ClaudeCodeAgent("", anthropic_api_key)
-        analysis = agent.analyze_ticket(ticket_description, "Sample repository with src/ directory")
+        analysis, code_changes = agent.analyze_ticket(ticket_description, "Sample repository with src/ directory")
         
         return jsonify({
             "success": True,
@@ -448,7 +457,15 @@ def test_claude():
                 "files_to_modify": analysis.files_to_modify,
                 "implementation_plan": analysis.implementation_plan,
                 "estimated_complexity": analysis.estimated_complexity
-            }
+            },
+            "code_changes": [
+                {
+                    "file_path": change.file_path,
+                    "change_description": change.change_description,
+                    "content_preview": change.new_content[:200] + "..." if len(change.new_content) > 200 else change.new_content
+                }
+                for change in code_changes
+            ]
         })
         
     except Exception as e:

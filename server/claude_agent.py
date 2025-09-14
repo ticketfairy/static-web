@@ -164,40 +164,86 @@ class ClaudeCodeAgent:
         
         return f"feature/{prefix}-{title_slug}"
         
-    def analyze_ticket(self, ticket_description: str, repository_context: str = "") -> TicketAnalysis:
+    def analyze_ticket(self, ticket_description: str, repository_context: str = "", local_repo_path: str = "") -> Tuple[TicketAnalysis, List[CodeChange]]:
         """
-        Analyze a ticket description using Claude to extract requirements and implementation plan
+        Analyze a ticket description and implement the required changes using Claude
         
         Args:
-            ticket_description: The ticket description to analyze
+            ticket_description: The ticket description to implement
             repository_context: Optional context about the repository structure
+            local_repo_path: Path to the local repository for reading existing files
             
         Returns:
-            TicketAnalysis object with structured analysis results
+            Tuple of (TicketAnalysis object, List of CodeChange objects)
         """
-        prompt = f"""Analyze this development ticket and provide implementation guidance.
+        # Read existing files that might be relevant
+        existing_files_content = {}
+        if local_repo_path and repository_context:
+            # Extract potential file paths from repository context
+            import re
+            file_paths = re.findall(r'[\w/.-]+\.(py|js|ts|tsx|jsx|java|cpp|c|go|rs|php|html|css|json|yml|yaml|md)', repository_context)
+            
+            # Read up to 10 most relevant files
+            for file_path in file_paths[:10]:
+                full_path = os.path.join(local_repo_path, file_path)
+                if os.path.exists(full_path):
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            # Truncate large files to avoid token limits
+                            if len(content) > 2000:
+                                content = content[:2000] + "\n... (truncated)"
+                            existing_files_content[file_path] = content
+                    except Exception as e:
+                        print(f"Could not read {file_path}: {e}")
+
+        # Prepare existing files summary for the prompt
+        files_summary = ""
+        if existing_files_content:
+            files_summary = "\n\nEXISTING FILES CONTENT:\n"
+            for file_path, content in existing_files_content.items():
+                files_summary += f"\n--- {file_path} ---\n{content}\n"
+
+        prompt = f"""You are implementing this development ticket. Provide both analysis and complete implementation.
 
 TICKET: {ticket_description}
 
 REPOSITORY CONTEXT:
-{repository_context[:1500] if repository_context else "No repository context provided"}
+{repository_context[:1500] if repository_context else "No repository context provided"}{files_summary}
 
-Provide analysis in this JSON format:
+TASK: Analyze the ticket and implement the required changes. Provide your response in this JSON format:
 
 {{
-    "title": "Clear, actionable title",
-    "description": "Detailed implementation description",
-    "requirements": ["Specific, testable requirements"],
-    "files_to_modify": ["Specific file paths that need changes"],
-    "implementation_plan": ["Concrete implementation steps"],
-    "estimated_complexity": "low|medium|high"
+    "analysis": {{
+        "title": "Clear, actionable title",
+        "description": "Detailed implementation description", 
+        "requirements": ["Specific, testable requirements"],
+        "files_to_modify": ["Specific file paths that need changes"],
+        "implementation_plan": ["Concrete implementation steps"],
+        "estimated_complexity": "low|medium|high"
+    }},
+    "code_changes": [
+        {{
+            "file_path": "relative/path/to/file.ext",
+            "new_content": "complete file content here",
+            "change_description": "brief description of changes made"
+        }}
+    ]
 }}
 
-GUIDELINES:
+IMPLEMENTATION GUIDELINES:
+- Write production-ready, complete code implementations
+- Include proper error handling, type annotations, and documentation
+- Follow existing code patterns and conventions from the repository
+- Create new files if needed with appropriate file extensions and paths
+- Ensure all imports and dependencies are included
+- Make at least 1-3 meaningful code changes
+- If modifying existing files, preserve existing functionality unless explicitly changing it
+- Use relative paths from repository root for all file_path values
+
+ANALYSIS GUIDELINES:
 - Be specific about file paths (e.g., "src/components/Button.tsx", not just "Button component")
-- Include at least 1-3 specific files to modify
 - Make requirements actionable and testable
-- If no existing files match, suggest new file names with appropriate paths
 - Consider common patterns: components, services, utils, tests, config files
 
 Return only valid JSON, no markdown or explanations."""
@@ -208,26 +254,58 @@ Return only valid JSON, no markdown or explanations."""
         try:
             response = self.claude.messages.create(
                 model="claude-3-5-sonnet-20240620",
-                max_tokens=2000,
+                max_tokens=8000,  # Increased for code generation
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            analysis_json = json.loads(response.content[0].text)
+            response_text = response.content[0].text
             
-            return TicketAnalysis(
-                title=analysis_json["title"],
-                description=analysis_json["description"],
-                requirements=analysis_json["requirements"],
-                files_to_modify=analysis_json["files_to_modify"],
-                implementation_plan=analysis_json["implementation_plan"],
-                estimated_complexity=analysis_json["estimated_complexity"],
+            # Try to parse JSON response
+            try:
+                result_json = json.loads(response_text)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                import re
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if json_match:
+                    result_json = json.loads(json_match.group(1))
+                else:
+                    raise ValueError("Could not parse JSON from response")
+            
+            # Extract analysis
+            analysis_data = result_json.get("analysis", {})
+            analysis = TicketAnalysis(
+                title=analysis_data.get("title", self.create_title_from_description(ticket_description)),
+                description=analysis_data.get("description", ticket_description),
+                requirements=analysis_data.get("requirements", [ticket_description]),
+                files_to_modify=analysis_data.get("files_to_modify", []),
+                implementation_plan=analysis_data.get("implementation_plan", ["Implement changes"]),
+                estimated_complexity=analysis_data.get("estimated_complexity", "medium"),
                 ticket_number=ticket_number
             )
             
+            # Extract code changes
+            code_changes = []
+            changes_data = result_json.get("code_changes", [])
+            for change_data in changes_data:
+                if all(key in change_data for key in ["file_path", "new_content", "change_description"]):
+                    file_path = change_data["file_path"]
+                    original_content = existing_files_content.get(file_path, "")
+                    
+                    code_changes.append(CodeChange(
+                        file_path=file_path,
+                        original_content=original_content,
+                        new_content=change_data["new_content"],
+                        change_description=change_data["change_description"]
+                    ))
+            
+            return analysis, code_changes
+            
         except Exception as e:
-            # Fallback analysis if Claude fails - create meaningful title from description
+            print(f"Error in analyze_ticket: {e}")
+            # Fallback analysis if Claude fails
             fallback_title = self.create_title_from_description(ticket_description)
-            return TicketAnalysis(
+            fallback_analysis = TicketAnalysis(
                 title=fallback_title,
                 description=ticket_description,
                 requirements=[ticket_description],
@@ -236,6 +314,27 @@ Return only valid JSON, no markdown or explanations."""
                 estimated_complexity="medium",
                 ticket_number=ticket_number
             )
+            
+            # Create a simple fallback change
+            fallback_change = CodeChange(
+                file_path="IMPLEMENTATION_NOTES.md",
+                original_content="",
+                new_content=f"""# Implementation for: {fallback_title}
+
+## Description
+{ticket_description}
+
+## Status
+This is a placeholder implementation due to an error in code generation.
+Please review the ticket requirements and implement manually.
+
+## Error
+{str(e)}
+""",
+                change_description=f"Created implementation notes for {fallback_title}"
+            )
+            
+            return fallback_analysis, [fallback_change]
     
     def clone_repository(self, repo_name: str, branch: str = "main") -> Tuple[Repository, str]:
         """
@@ -608,11 +707,8 @@ This is a placeholder implementation. Please review and modify as needed.
             # Step 2: Get repository context
             repo_structure = self.get_repository_structure(local_path)
             
-            # Step 3: Analyze ticket
-            analysis = self.analyze_ticket(ticket_description, repo_structure)
-            
-            # Step 4: Generate code changes
-            changes = self.generate_code_changes(analysis, local_path)
+            # Step 3: Analyze ticket and generate code changes
+            analysis, changes = self.analyze_ticket(ticket_description, repo_structure, local_path)
             
             if not changes:
                 return PRResult(
