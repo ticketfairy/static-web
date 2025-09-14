@@ -1362,55 +1362,53 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                                                 <Box px={6} pb={6} w="full">
                                                     <VStack spacing={3}>
                                                         {/* Primary Actions */}
-                                                        <HStack spacing={2} w="full" justify="flex-end">
+                                                        <HStack spacing={2} w="full" justify="space-between">
+                                                            <Button
+                                                                size="sm"
+                                                                flex={1}
+                                                                onClick={() => {
+                                                                    // Open video player modal (side-by-side layout)
+                                                                    setVideoToPlay(video);
+                                                                    onVideoPlayerOpen();
+
+                                                                    const ticket = videoTickets[video.id];
+                                                                    if (ticket) {
+                                                                        setSelectedTicket(ticket);
+                                                                    } else if (video.s3Url && !analyzingVideos.has(video.id)) {
+                                                                        analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
+                                                                    } else {
+                                                                        toast({
+                                                                            title: "Video Not Ready",
+                                                                            description: "This video needs to be uploaded to cloud storage first.",
+                                                                            status: "warning",
+                                                                            duration: 3000,
+                                                                            isClosable: true,
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                isLoading={analyzingVideos.has(video.id)}
+                                                                loadingText="Generating..."
+                                                                isDisabled={!video.s3Url}
+                                                                bgGradient={videoTickets[video.id] ? "linear(to-r, green.500, green.600)" : "linear(to-r, purple.500, pink.500)"}
+                                                                color="white"
+                                                                _hover={{
+                                                                    bgGradient: videoTickets[video.id] ? "linear(to-r, green.600, green.700)" : "linear(to-r, purple.600, pink.600)",
+                                                                    transform: "translateY(-1px)",
+                                                                }}
+                                                                _disabled={{
+                                                                    bgGradient: "linear(to-r, gray.300, gray.400)",
+                                                                    color: "gray.500",
+                                                                }}
+                                                                borderRadius="lg"
+                                                                fontWeight="bold"
+                                                                shadow="md"
+                                                            >
+                                                                {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 GENERATE TICKET ✨"}
+                                                            </Button>
                                                             <Button size="sm" colorScheme="red" variant="outline" onClick={() => handleDeleteVideo(video)} title="Delete video" borderRadius="lg">
                                                                 <Icon as={FiTrash2} />
                                                             </Button>
                                                         </HStack>
-
-                                                        {/* Generate Ticket Button */}
-                                                        <Button
-                                                            size="md"
-                                                            w="full"
-                                                            onClick={() => {
-                                                                // Open video player modal (side-by-side layout)
-                                                                setVideoToPlay(video);
-                                                                onVideoPlayerOpen();
-
-                                                                const ticket = videoTickets[video.id];
-                                                                if (ticket) {
-                                                                    setSelectedTicket(ticket);
-                                                                } else if (video.s3Url && !analyzingVideos.has(video.id)) {
-                                                                    analyzeVideoAndStoreTicket(video.id, video.s3Url, video.title);
-                                                                } else {
-                                                                    toast({
-                                                                        title: "Video Not Ready",
-                                                                        description: "This video needs to be uploaded to cloud storage first.",
-                                                                        status: "warning",
-                                                                        duration: 3000,
-                                                                        isClosable: true,
-                                                                    });
-                                                                }
-                                                            }}
-                                                            isLoading={analyzingVideos.has(video.id)}
-                                                            loadingText="AI Generating Ticket..."
-                                                            isDisabled={!video.s3Url}
-                                                            bgGradient={videoTickets[video.id] ? "linear(to-r, green.500, green.600)" : "linear(to-r, purple.500, pink.500)"}
-                                                            color="white"
-                                                            _hover={{
-                                                                bgGradient: videoTickets[video.id] ? "linear(to-r, green.600, green.700)" : "linear(to-r, purple.600, pink.600)",
-                                                                transform: "translateY(-1px)",
-                                                            }}
-                                                            _disabled={{
-                                                                bgGradient: "linear(to-r, gray.300, gray.400)",
-                                                                color: "gray.500",
-                                                            }}
-                                                            borderRadius="lg"
-                                                            fontWeight="bold"
-                                                            shadow="md"
-                                                        >
-                                                            {videoTickets[video.id] ? "📋 VIEW TICKET" : "✨ 🧚 GENERATE TICKET ✨"}
-                                                        </Button>
                                                     </VStack>
                                                 </Box>
                                             </VStack>
