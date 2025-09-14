@@ -112,8 +112,7 @@ The optimized workflow now follows this pattern:
 ```
 Claude iteration 1: PLAN (lists target files + 2 searches)
 Claude iteration 2: search_files { pattern: "MyTicketsPage", file_extension: ".tsx" }
-Claude iteration 3: peek_file { file_path: "client/src/components/MyTicketsPage.tsx" }
-Claude iteration 4: write_file { file_path: "...", content: "..." }  # ← starts writing early
+Claude iteration 3: write_file { file_path: "...", content: "..." }  # ← starts writing early
 ```
 
 Instead of the previous pattern:

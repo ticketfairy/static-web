@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import LandingPage from "./LandingPage";
 import VideoPage from "./VideoPage";
-import MyTicketsPage from "./MyTicketsPage";
 
 function App() {
   return (
