@@ -24,6 +24,7 @@ import {
   AlertIcon,
   Code,
   HStack,
+  Flex,
 } from "@chakra-ui/react";
 import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, FiPlay } from "react-icons/fi";
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
@@ -71,6 +72,7 @@ import { generateRecordingFilename, checkBrowserSupport, getBrowserInfo } from "
 import { useS3Upload, useS3VideoList, useS3Ticket } from "../hooks/useS3Upload";
 import type { S3VideoMetadata, TicketData } from "../utils/s3Upload";
 import { generateThumbnailFromBlob, generateThumbnailFromUrl, createPlaceholderThumbnail } from "../utils/videoThumbnails";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 interface VideoPageProps {
   onNavigateToTickets: () => void;
@@ -1118,13 +1120,21 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
+      {/* Header with Back Button and Dark Mode Toggle */}
       {onNavigateToLanding && (
-        <Box p={4}>
+        <Flex p={4} justify="space-between" align="center">
           <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
             Back to Home
           </Button>
-        </Box>
+          <DarkModeToggle />
+        </Flex>
+      )}
+
+      {/* Dark Mode Toggle for when there's no back button */}
+      {!onNavigateToLanding && (
+        <Flex p={4} justify="flex-end">
+          <DarkModeToggle />
+        </Flex>
       )}
 
       {/* Video Page Content */}
