@@ -1432,15 +1432,61 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         <Button
                             colorScheme="gray"
                             mr={3}
-                            onClick={() => {
-                                // TODO: Implement Linear integration
-                                toast({
-                                    title: "Linear Integration",
-                                    description: "Linear integration coming soon!",
-                                    status: "info",
-                                    duration: 3000,
-                                    isClosable: true,
-                                });
+                            onClick={async () => {
+                                if (selectedTicket && selectedTicket.success && selectedTicket.ticket) {
+                                    try {
+                                        const response = await fetch("http://localhost:4000/create-linear-issue", {
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                            },
+                                            body: JSON.stringify({
+                                                title: selectedTicket.ticket.title,
+                                                description: selectedTicket.ticket.description,
+                                            }),
+                                        });
+
+                                        const result = await response.json();
+
+                                        if (result.success && result.url) {
+                                            toast({
+                                                title: "Linear Issue Created!",
+                                                description: `Issue ${result.identifier} created successfully`,
+                                                status: "success",
+                                                duration: 5000,
+                                                isClosable: true,
+                                            });
+                                            
+                                            // Open the Linear issue in a new tab
+                                            window.open(result.url, "_blank");
+                                        } else {
+                                            toast({
+                                                title: "Failed to Create Linear Issue",
+                                                description: result.error || "Unknown error occurred",
+                                                status: "error",
+                                                duration: 5000,
+                                                isClosable: true,
+                                            });
+                                        }
+                                    } catch (error) {
+                                        console.error("Linear API error:", error);
+                                        toast({
+                                            title: "Error",
+                                            description: "Failed to connect to Linear API",
+                                            status: "error",
+                                            duration: 5000,
+                                            isClosable: true,
+                                        });
+                                    }
+                                } else {
+                                    toast({
+                                        title: "No Ticket Data",
+                                        description: "Please generate a ticket first",
+                                        status: "warning",
+                                        duration: 3000,
+                                        isClosable: true,
+                                    });
+                                }
                             }}
                         >
                             Open in Linear

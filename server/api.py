@@ -9,6 +9,7 @@ from time import time
 import json
 import cohere
 from jira_integration import create_jira_ticket
+from linear_integration import create_linear_issue
 
 load_dotenv()
 
@@ -156,6 +157,32 @@ def create_jira_ticket_endpoint():
             #     "error": result["error"]
             # }), 400
             return jsonify({"message": "uwu no bueno"}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/create-linear-issue", methods=["POST"])
+def create_linear_issue_endpoint():
+    try:
+        # Get ticket data from request
+        data = request.get_json()
+        if not data or "title" not in data or "description" not in data:
+            return jsonify({"error": "title and description are required"}), 400
+
+        print("Linear issue data:", data)
+        
+        title = data["title"]
+        description = data["description"]
+        team_id = data.get("team_id")  # Optional team ID
+
+        # Create Linear issue
+        result = create_linear_issue(title, description, team_id)
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
