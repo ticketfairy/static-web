@@ -10,6 +10,7 @@ import json
 import cohere
 from jira_integration import create_jira_ticket
 from linear_integration import create_linear_issue
+from claude_agent import create_pr_from_ticket, ClaudeCodeAgent
 
 load_dotenv()
 
@@ -19,6 +20,8 @@ CORS(app)
 # set up twelve labs client
 TWELVE_LABS_API_KEY = os.getenv("TWELVE_LABS_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 PROMPT = """
 ### Prompt:
@@ -282,6 +285,132 @@ Return only the enhanced description, no additional commentary."""
 
     except Exception as e:
         print(f"Error enhancing ticket with Cohere: {e}")
+
+
+@app.route("/generate-pr", methods=["POST"])
+def generate_pr():
+    """
+    Generate a GitHub PR from a ticket description using Claude agent
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+        
+        # Required fields
+        ticket_description = data.get("ticket_description")
+        repo_name = data.get("repo_name")
+        
+        if not ticket_description:
+            return jsonify({"error": "ticket_description is required"}), 400
+        if not repo_name:
+            return jsonify({"error": "repo_name is required (format: owner/repo)"}), 400
+        
+        # Optional fields
+        base_branch = data.get("base_branch", "main")
+        github_token = data.get("github_token", GITHUB_TOKEN)
+        anthropic_api_key = data.get("anthropic_api_key", ANTHROPIC_API_KEY)
+        
+        # Validate tokens
+        if not github_token:
+            return jsonify({"error": "GitHub token is required (set GITHUB_TOKEN env var or provide in request)"}), 400
+        if not anthropic_api_key:
+            return jsonify({"error": "Anthropic API key is required (set ANTHROPIC_API_KEY env var or provide in request)"}), 400
+        
+        # Generate PR using Claude agent
+        result = create_pr_from_ticket(
+            ticket_description=ticket_description,
+            repo_name=repo_name,
+            github_token=github_token,
+            anthropic_api_key=anthropic_api_key,
+            base_branch=base_branch
+        )
+        
+        if result.success:
+            return jsonify({
+                "success": True,
+                "pr_url": result.pr_url,
+                "pr_number": result.pr_number,
+                "message": f"Successfully created PR #{result.pr_number}"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.error_message
+            }), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/analyze-ticket", methods=["POST"])
+def analyze_ticket():
+    """
+    Analyze a ticket description using Claude to extract requirements and implementation plan
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+        
+        ticket_description = data.get("ticket_description")
+        repo_name = data.get("repo_name")
+        
+        if not ticket_description:
+            return jsonify({"error": "ticket_description is required"}), 400
+        
+        anthropic_api_key = data.get("anthropic_api_key", ANTHROPIC_API_KEY)
+        github_token = data.get("github_token", GITHUB_TOKEN)
+        
+        if not anthropic_api_key:
+            return jsonify({"error": "Anthropic API key is required"}), 400
+        
+        # Create agent instance
+        agent = ClaudeCodeAgent(github_token or "", anthropic_api_key)
+        
+        # Get repository context if repo_name is provided
+        repository_context = ""
+        if repo_name and github_token:
+            try:
+                _, local_path = agent.clone_repository(repo_name)
+                repository_context = agent.get_repository_structure(local_path)
+            except Exception as e:
+                print(f"Could not get repository context: {e}")
+        
+        # Analyze the ticket
+        analysis = agent.analyze_ticket(ticket_description, repository_context)
+        
+        return jsonify({
+            "success": True,
+            "analysis": {
+                "title": analysis.title,
+                "description": analysis.description,
+                "requirements": analysis.requirements,
+                "files_to_modify": analysis.files_to_modify,
+                "implementation_plan": analysis.implementation_plan,
+                "estimated_complexity": analysis.estimated_complexity
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/agent-status", methods=["GET"])
+def agent_status():
+    """
+    Check if the Claude agent is properly configured
+    """
+    try:
+        status = {
+            "github_token_configured": bool(GITHUB_TOKEN),
+            "anthropic_api_key_configured": bool(ANTHROPIC_API_KEY),
+            "agent_ready": bool(GITHUB_TOKEN and ANTHROPIC_API_KEY)
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
