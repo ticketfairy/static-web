@@ -899,10 +899,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
               lineHeight="1.1">
               ✨ Ticket Fairy Studio ✨
             </Heading>
-            <Text fontSize={{ base: "lg", md: "xl" }} color="gray.600" textAlign="center" maxW="600px" lineHeight="1.6">
-              Transform your screen recordings into detailed, AI-generated tickets. Record bugs, demos, or feature requests and let our
-              fairy magic create professional tickets for Jira, Linear, and more.
-            </Text>
           </VStack>
 
           {/* Feature highlights */}
@@ -972,10 +968,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                   borderRadius="xl">
                   Create Video
                 </Button>
-                <Text fontSize="sm" color="gray.600" maxW="400px" textAlign="center">
-                  Upload existing videos or record your screen with webcam overlay. Our AI will automatically analyze and generate detailed
-                  tickets.
-                </Text>
               </VStack>
             </Box>
           </VStack>
@@ -1053,9 +1045,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                 fontWeight="bold">
                 🎬 My Video Collection
               </Heading>
-              <Text fontSize="md" color="gray.600" textAlign="center" maxW="500px">
-                Your recorded videos and uploaded files. Each video can be analyzed by AI to generate detailed tickets automatically.
-              </Text>
             </VStack>
 
             {/* Loading state for S3 videos */}
@@ -1659,7 +1648,7 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                     let copyText = "";
 
                     if (ticketToUse.success && ticketToUse.ticket) {
-                      copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}\n\nVideo ID: ${ticketToUse.video_id}\nIndex ID: ${ticketToUse.index_id}`;
+                      copyText = `Title: ${ticketToUse.ticket.title}\n\nDescription:\n${ticketToUse.ticket.description}`;
                     } else if (ticketToUse.raw_response) {
                       copyText = `Raw Analysis Result:\n${ticketToUse.raw_response}`;
                     } else {
@@ -1771,9 +1760,6 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
                         </Text>
                       </VStack>
                     </Box>
-                    <Text fontSize="sm" color="gray.500">
-                      Video ID: {selectedTicket.video_id} | Index ID: {selectedTicket.index_id}
-                    </Text>
                   </VStack>
                 ) : selectedTicket.raw_response ? (
                   <VStack spacing={3} align="start" w="full">

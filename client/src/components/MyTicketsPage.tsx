@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Heading, Text, VStack, Icon, SimpleGrid, useColorModeValue, Badge, Card, CardBody, CardHeader, HStack, Tag, TagLabel } from "@chakra-ui/react";
-import { FiVideo, FiCalendar, FiClock, FiTrash2 } from "react-icons/fi";
+import { FiVideo, FiCalendar, FiClock, FiTrash2, FiPlay, FiCopy } from "react-icons/fi";
 import { useTickets } from "../hooks/useTickets";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -82,6 +82,39 @@ function MyTicketsPage({ onNavigateToLanding }: MyTicketsPageProps) {
                           {ticket.type}
                         </Badge>
                       </HStack>
+
+                      {ticket.videoLink && (
+                        <Box w="full">
+                          <HStack spacing={2} mb={2}>
+                            <Icon as={FiPlay} w={4} h={4} color="purple.500" />
+                            <Text fontSize="sm" fontWeight="medium" color="purple.500">
+                              Video Reference
+                            </Text>
+                          </HStack>
+                          <HStack spacing={2}>
+                            <Button
+                              leftIcon={<Icon as={FiPlay} />}
+                              size="xs"
+                              variant="outline"
+                              colorScheme="purple"
+                              onClick={() => window.open(ticket.videoLink, '_blank')}
+                            >
+                              Watch
+                            </Button>
+                            <Button
+                              leftIcon={<Icon as={FiCopy} />}
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => {
+                                navigator.clipboard.writeText(ticket.videoLink || '');
+                                // You might want to add a toast here
+                              }}
+                            >
+                              Copy Link
+                            </Button>
+                          </HStack>
+                        </Box>
+                      )}
 
                       <Box fontSize="sm" color={textColor} maxH="120px" overflowY="auto">
                         <ReactMarkdown 

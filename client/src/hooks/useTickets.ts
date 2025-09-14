@@ -12,6 +12,7 @@ export interface Ticket {
   tags: string[];
   createdAt: Date;
   videoId?: string;
+  videoLink?: string;
 }
 
 const STORAGE_KEY = 'ticket-fairy-tickets';

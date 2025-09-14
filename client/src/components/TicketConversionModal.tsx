@@ -24,7 +24,7 @@ import {
   AlertIcon,
   AlertDescription
 } from "@chakra-ui/react";
-import { FiCheck, FiCopy, FiSave } from "react-icons/fi";
+import { FiCheck, FiCopy, FiSave, FiPlay, FiExternalLink } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useTickets } from "../hooks/useTickets";
 
@@ -36,6 +36,7 @@ interface TicketData {
   estimatedTime: string;
   acceptanceCriteria: string[];
   tags: string[];
+  videoLink?: string;
 }
 
 interface TicketConversionModalProps {
@@ -65,7 +66,8 @@ export function TicketConversionModal({
     type: 'Task',
     estimatedTime: '',
     acceptanceCriteria: [],
-    tags: []
+    tags: [],
+    videoLink: ''
   });
   const { addTicket } = useTickets();
   const toast = useToast();
@@ -93,6 +95,9 @@ export function TicketConversionModal({
       setProgress(((i + 1) / steps.length) * 100);
       await new Promise(resolve => setTimeout(resolve, steps[i].duration));
     }
+
+    // Generate video link from blob
+    const videoLink = videoBlob ? URL.createObjectURL(videoBlob) : '';
 
     // Simulate AI-generated ticket data
     const mockTicket: TicketData = {
@@ -129,7 +134,8 @@ This affects user experience and may be preventing legitimate users from accessi
         'Clear error messages are shown for invalid credentials',
         'Login flow works consistently across different browsers'
       ],
-      tags: ['authentication', 'login', 'bug', 'user-experience']
+      tags: ['authentication', 'login', 'bug', 'user-experience'],
+      videoLink: videoLink
     };
 
     setTicketData(mockTicket);
@@ -153,7 +159,8 @@ This affects user experience and may be preventing legitimate users from accessi
       type: ticketData.type,
       estimatedTime: ticketData.estimatedTime,
       acceptanceCriteria: ticketData.acceptanceCriteria,
-      tags: ticketData.tags
+      tags: ticketData.tags,
+      videoLink: ticketData.videoLink
     });
 
     // Also call the original callback for backward compatibility
@@ -243,6 +250,42 @@ ${ticketData.tags.join(', ')}
             placeholder="Enter ticket title"
           />
         </FormControl>
+
+        {ticketData.videoLink && (
+          <FormControl>
+            <FormLabel>Video Reference</FormLabel>
+            <HStack spacing={2}>
+              <Button
+                leftIcon={<Icon as={FiPlay} />}
+                size="sm"
+                variant="outline"
+                colorScheme="purple"
+                onClick={() => window.open(ticketData.videoLink, '_blank')}
+              >
+                Watch Video
+              </Button>
+              <Button
+                leftIcon={<Icon as={FiCopy} />}
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  navigator.clipboard.writeText(ticketData.videoLink || '');
+                  toast({
+                    title: 'Video link copied!',
+                    status: 'success',
+                    duration: 2000,
+                    isClosable: true,
+                  });
+                }}
+              >
+                Copy Link
+              </Button>
+            </HStack>
+            <Text fontSize="sm" color="gray.500" mt={1}>
+              This video will be included when integrating with Jira and Linear
+            </Text>
+          </FormControl>
+        )}
 
         <HStack spacing={4}>
           <FormControl>
