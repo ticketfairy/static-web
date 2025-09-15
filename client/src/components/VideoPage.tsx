@@ -29,6 +29,7 @@ import { FiVideo, FiUpload, FiCamera, FiArrowLeft, FiCloud, FiTrash2, FiCopy, Fi
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useScreenRecording } from "../hooks/useScreenRecording";
 import SparkleTrail from "./SparkleTrail";
+import { ColorModeToggle } from "./ColorModeToggle";
 
 // API function to call Flask analyze_video endpoint
 const analyzeVideo = async (videoUrl: string, userNotes: string) => {
@@ -1118,14 +1119,23 @@ function VideoPage({ onNavigateToTickets: _onNavigateToTickets, onNavigateToLand
   return (
     <Box bg={bgColor} minH="100vh" width="100vw" display="flex" flexDirection="column">
       <SparkleTrail />
-      {/* Back Button */}
-      {onNavigateToLanding && (
-        <Box p={4}>
-          <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
-            Back to Home
-          </Button>
-        </Box>
-      )}
+      
+      {/* Header with Back Button and Dark Mode Toggle */}
+      <Box p={4} position="relative">
+        <HStack justify="space-between" align="center">
+          {/* Back Button */}
+          {onNavigateToLanding ? (
+            <Button leftIcon={<Icon as={FiArrowLeft} />} variant="ghost" onClick={onNavigateToLanding}>
+              Back to Home
+            </Button>
+          ) : (
+            <Box /> 
+          )}
+          
+          {/* Dark Mode Toggle */}
+          <ColorModeToggle />
+        </HStack>
+      </Box>
 
       {/* Video Page Content */}
       <VStack spacing={12} textAlign="center" py={16} px={4} maxW="1400px" mx="auto" flex="1" justify="flex-start" align="center">

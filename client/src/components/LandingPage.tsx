@@ -1,5 +1,6 @@
-import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button } from "@chakra-ui/react";
+import { Box, Flex, Heading, Text, VStack, SimpleGrid, useColorModeValue, Image, Button, HStack } from "@chakra-ui/react";
 import SparkleTrail from "./SparkleTrail";
+import { ColorModeToggle } from "./ColorModeToggle";
 
 interface LandingPageProps {
   onNavigateToVideo: () => void;
@@ -20,22 +21,25 @@ function LandingPage({ onNavigateToVideo }: LandingPageProps) {
           </Heading>
         </Flex>
 
-        <Button
-          colorScheme="purple"
-          variant="solid"
-          size="md"
-          onClick={onNavigateToVideo}
-          _hover={{
-            transform: "translateY(-2px)",
-            boxShadow: "lg",
-          }}
-          transition="all 0.2s"
-          fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif"
-          fontSize="1rem"
-          fontWeight="500"
-        >
-          Ticket Fairy
-        </Button>
+        <HStack spacing={3}>
+          <ColorModeToggle />
+          <Button
+            colorScheme="purple"
+            variant="solid"
+            size="md"
+            onClick={onNavigateToVideo}
+            _hover={{
+              transform: "translateY(-2px)",
+              boxShadow: "lg",
+            }}
+            transition="all 0.2s"
+            fontFamily="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+            fontSize="1rem"
+            fontWeight="500"
+          >
+            Ticket Fairy
+          </Button>
+        </HStack>
       </Flex>
 
       {/* Demo Video Section */}
