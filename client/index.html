@@ -11,6 +11,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Bitcount+Grid+Double:wght@100..900&display=swap" rel="stylesheet">
   </head>
   <body>
+    <script>
+      try {
+        var colorMode = localStorage.getItem('chakra-ui-color-mode');
+        if (colorMode === 'dark') {
+          document.body.classList.add('chakra-ui-dark');
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
