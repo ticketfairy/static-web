@@ -2,6 +2,9 @@
 
 A magical web application that transforms video recordings into project tickets with AI-powered analysis and seamless export capabilities.
 
+### 📽️ Demo
+See a demo of Ticket Fairy here: https://youtu.be/QCUhXQOQN2M?si=hrnFz4za3q3Nvxpb
+
 ## ✨ Features
 
 ### 🎥 **Screen Recording**
